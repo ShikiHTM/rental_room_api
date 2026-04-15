@@ -1,0 +1,26 @@
+enum FaultFindingStatus {
+    PENDING
+    APPROVED
+    REJECTED
+}
+
+model Room {
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  address       String
+  city          String
+  pricePerNight Decimal  @db.Decimal(10, 2)
+  maxGuests     Int
+  status        FaultFindingStatus   @default(PENDING)
+
+  images        String[] @default([])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Quan hệ: Phòng thuộc về một Host
+  hostId        String
+  host          User     @relation(fields: [hostId], references: [id])
+  
+  bookings      Booking[]
+}

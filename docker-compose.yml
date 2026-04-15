@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+
+    environment:
+      - POSTGRES_USER=shiki
+      - POSTGRES_PASSWORD=Botan123
+      - POSTGRES_DB=room_rental
+
+    ports:
+      - '5433:5432'
+      

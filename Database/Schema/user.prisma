@@ -1,0 +1,21 @@
+// Database/Schema/user.prisma
+
+enum ROLE {
+    USER
+    HOST
+    ADMIN
+}
+
+model User {
+    id  String  @id @default(uuid())
+    email   String  @unique
+    passwordHash    String
+    fullName    String
+    phoneNumber  String?
+    role    ROLE    @default(USER)
+    createdAt    DateTime    @default(now())
+    updatedAt   DateTime    @updatedAt
+
+    rooms   Room[]
+    bookings    Booking[]
+}
