@@ -1,0 +1,14 @@
+model Review {
+    id  String  @id @default(uuid())
+    rating  Int     // 1 - 5 Stars
+    comment String?
+
+    userId  String
+    user    User    @relation(fields: [userId], references: [id])
+
+    roomId  String
+    room    Room    @relation(fields: [roomId], references: [id])
+
+    // Allow image uploading
+    images  ReviewImage[]
+}

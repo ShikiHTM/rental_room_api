@@ -1,0 +1,31 @@
+enum Method {
+    CASH
+    BANK_TRANSFER
+    ONLINE
+}
+
+enum Status {
+    PENDING
+    COMPLETED
+    FAILED
+    CANCELLED
+}
+
+model Payment {
+    id  String  @id @default(uuid())
+
+    method  Method
+    status  Status  @default(PENDING)
+
+    amount  Decimal @db.Decimal(12, 2)
+    transactionId   String?
+
+    bookingId   String
+    booking     Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+    userId  String
+    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    createdAt   DateTime    @default(now())
+    updatedAt   DateTime    @updatedAt
+}

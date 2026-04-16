@@ -20,4 +20,6 @@ model Booking {
 
     roomId  String
     room    Room    @relation(fields: [roomId], references: [id])
+
+    payments Payment[]
 }

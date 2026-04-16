@@ -14,13 +14,13 @@ model Room {
   maxGuests     Int
   status        FaultFindingStatus   @default(PENDING)
 
-  images        String[] @default([])
+  images        RoomImage[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Quan hệ: Phòng thuộc về một Host
   hostId        String
   host          User     @relation(fields: [hostId], references: [id])
   
   bookings      Booking[]
+  reviews       Review[]
 }
