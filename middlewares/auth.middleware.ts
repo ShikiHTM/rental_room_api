@@ -1,10 +1,16 @@
-import {type Request, type Response, type NextFunction} from 'express';
+import { type Request, type Response, type NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { authConfig } from '../config/auth.config.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+export interface UserPayload {
+    id: string;
+    role: 'USER' | 'HOST' | 'ADMIN';
+    iat?: number;
+    exp?: number;
+}
 
 export interface AuthRequest extends Request {
-    user?: string | jwt.JwtPayload;
+    user: UserPayload
 }
 
 export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction): any => {
@@ -12,15 +18,15 @@ export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction)
     const authHeader = req.header('Authorization');
     const token = authHeader && authHeader.split(' ')[1];
 
-    if(!token) {
-        return res.status(401).json({message: "Access denied. No token provided."})
+    if (!token) {
+        return res.status(401).json({ message: "Access denied. No token provided." })
     }
 
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, authConfig.JWTSecret) as unknown as UserPayload;
         req.user = decoded;
         next();
-    } catch(error) {
+    } catch (error) {
         return res.status(403).json({ message: 'Invalid or expired token.' })
     }
 }
