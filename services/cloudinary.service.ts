@@ -2,7 +2,7 @@ import { v2 as cloudinary } from 'cloudinary'
 import { cloudinaryConfig } from '../config/cloudinary.config.js';
 import ImageProcessor from './image.service.js';
 
-interface UploadResponse {
+export interface UploadResponse {
     image_url: string;
     public_id: string;
 }
