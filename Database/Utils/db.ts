@@ -10,7 +10,7 @@ const safePassword = encodeURIComponent(databaseConfig.user.password || '');
 
 const databaseUrl = `${databaseConfig.connection}://${databaseConfig.user.name}:${safePassword}@${databaseConfig.host}:${databaseConfig.port}/${databaseConfig.dbName}`;
 
-if(!databaseUrl) {
+if (!databaseUrl) {
     throw new Error("No 'DATABASE_URL' has been found.")
 }
 
