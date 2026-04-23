@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary'
 import { cloudinaryConfig } from '../config/cloudinary.config.js';
 import ImageProcessor from './image.service.js';
+import { logger } from './logger.service.js';
 
 export interface UploadResponse {
     image_url: string;
@@ -38,7 +39,7 @@ class Cloudinary {
                     },
                     (error, result) => {
                         if (error) {
-                            console.error("Cloudinary Error:", error);
+                            logger.error("Cloudinary Error:", error);
                             return reject(new Error('Upload to Cloudinary failed'));
                         }
 
@@ -52,7 +53,7 @@ class Cloudinary {
                 stream.end(buffer);
             })
         } catch (error) {
-            console.error('Cloudinary Upload Error:', error);
+            logger.error('Cloudinary Upload Error:', error);
             throw new Error('Uploads image failed')
         }
     }
@@ -76,10 +77,10 @@ class Cloudinary {
             if (response.result === 'ok') {
                 return true;
             }
-            console.warn(`Cloudinary delete warning: ${response.result} for ID: ${public_id}`);
+            logger.warn(`Cloudinary delete warning: ${response.result} for ID: ${public_id}`);
             return false;
         } catch (error) {
-            console.error('Cloudinary Upload Error:', error);
+            logger.error('Cloudinary Upload Error:', error);
             throw new Error('Deletes image failed')
         }
     }
