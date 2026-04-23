@@ -13,7 +13,7 @@ export interface AuthRequest extends Request {
     user: UserPayload
 }
 
-export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction): any => {
+export const verifyToken = (req: Request, res: Response, next: NextFunction): any => {
     // Get token form "Authorization: Bearer <token>"
     const authHeader = req.header('Authorization');
     const token = authHeader && authHeader.split(' ')[1];
