@@ -1,47 +1,43 @@
-import type { Response } from "express";
-import type { AuthRequest } from "../middlewares/auth.middleware.js";
+import type { Request, Response } from "express";
 import db from "../Database/Utils/db.js"
+import { catchAsync } from "../Utils/catchAsync.utils.js";
 
-export const approveRoom = async (req: AuthRequest, res: Response): Promise<any> => {
-    try {
-        const { roomId } = req.params as { roomId: string };
+export const approveRoom = catchAsync(async (req: Request, res: Response): Promise<any> => {
+    const { roomId } = req.params as { roomId: string };
 
-        const room = await db.room.findUnique({
-            where: {id: roomId},
-            include: {host: true}
-        });
+    const room = await db.room.findUnique({
+        where: { id: roomId },
+        include: { host: true }
+    });
 
-        if(!room) return res.status(404).json({
-            message: 'Room not found'
-        });
+    if (!room) return res.status(404).json({
+        message: 'Room not found'
+    });
 
-        const updateTasks: any[] = [
-            db.room.update({
+    const updateTasks: any[] = [
+        db.room.update({
+            where: {
+                id: roomId
+            },
+            data: {
+                status: 'APPROVED'
+            }
+        })
+    ]
+
+    if (room.host.role === 'USER') {
+        updateTasks.push(
+            db.user.update({
                 where: {
-                    id: roomId
+                    id: room.hostId
                 },
                 data: {
-                    status: 'APPROVED'
+                    role: 'HOST'
                 }
             })
-        ]
+        )
+    }
 
-        // If host is User, update role from USER -> HOST
-
-        if(room.host.role === 'USER') {
-            updateTasks.push(
-                db.user.update({
-                    where: {
-                        id: room.hostId
-                    },
-                    data: {
-                        role: 'HOST'
-                    }
-                })
-            )
-        }
-
-        await db.$transaction(updateTasks)
-        res.status(200).json({ message: 'Room approved and Host status verified.' });
-    } catch (error) { res.status(500).json({ message: 'Error' }); }
-}
+    await db.$transaction(updateTasks)
+    res.status(200).json({ message: 'Room approved and Host status verified.' });
+})
