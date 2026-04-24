@@ -11,4 +11,24 @@ services:
 
     ports:
       - '5433:5432'
-      
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_service
+    restart: always
+
+    ports:
+      # For UI
+      - '15672:15672'
+      # For core
+      - '5672:5672'
+
+    environment:
+      - RABBITMQ_DEFAULT_USER=shiki
+      - RABBITMQ_DEFAULT_PASS=Botan123
+
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  rabbitmq_data:
