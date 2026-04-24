@@ -1,54 +1,75 @@
 import nodemailer from 'nodemailer';
 import { mailConfig } from '../config/mail.config.js';
 import { logger } from './logger.service.js';
-import { transport } from 'winston';
+import type { IMailConfig } from '../types/types.js';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
+import amqp from 'amqplib';
+import { queueConfig } from '../config/rabbitmq.config.js';
 
-interface IMailConfig {
-    to: string,
-    subject: string | 'Untitled',
-    text: string,
-    html?: string,
-}
 
-export default class Mail {
-    static #instance: Mail;
+export default class MailWorker {
+    static #instance: MailWorker;
     static transporter: nodemailer.Transporter;
+    private static readonly QUEUE_NAME = 'email_queue_task';
 
     private constructor() {
-        Mail.transporter = nodemailer.createTransport({
-            host: mailConfig.host.name!,
+        MailWorker.transporter = nodemailer.createTransport({
+            host: mailConfig.host.name,
             port: mailConfig.host.port,
             secure: (process.env.NODE_ENV === 'production'),
             auth: {
                 user: mailConfig.user.name,
                 pass: mailConfig.user.password
             }
-        });
+        } as SMTPTransport.Options);
 
         ( async () => {
             try {
-                await Mail.transporter.verify();
+                await MailWorker.transporter.verify();
                 logger.info('Mail server is ready');
+                await this.listen();
             }
             catch(error) {
-                logger.error('Verification error:', error);
+                logger.error('Worker Initialization Error:', error);
             }
-        })
+        })();
     };
 
-    public static get instance(): Mail {
-        if(!Mail.#instance) {
-            Mail.#instance = new Mail();
+    public static get instance(): MailWorker {
+        if(!MailWorker.#instance) {
+            MailWorker.#instance = new MailWorker();
         }
-        return Mail.#instance;
+        return MailWorker.#instance;
     }
 
-    public static async send(config: IMailConfig) {
+    private async listen() {
         try {
-            await Mail.transporter.sendMail(config);
-            logger.info('email sent successfully');
-        } catch(error) {
-            logger.error('Error while sending email', error);
+            const connection = await amqp.connect(queueConfig.url);
+            const channel = await connection.createChannel();
+
+            await channel.assertQueue(MailWorker.QUEUE_NAME, {durable: true});
+
+            channel.prefetch(1);
+
+            logger.info(`[x] MailWorker listening for messages in ${MailWorker.QUEUE_NAME}`);
+
+            channel.consume(MailWorker.QUEUE_NAME, async (msg) => {
+                if(msg !== null) {
+                    try {
+                        const config: IMailConfig = JSON.parse(msg.content.toString());
+
+                        await MailWorker.transporter.sendMail(config);
+
+                        logger.info(`Email sent successfully to ${config.to}`);
+                        channel.ack(msg);
+                    } catch(error) {
+                        logger.error(`Failed to process email task: `, error);
+                        channel.nack(msg);
+                    }
+                }
+            })
+        }catch(error) {
+            logger.error('RabbitMQ Connection error:', error);
         }
     }
 }
