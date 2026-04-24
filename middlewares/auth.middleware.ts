@@ -1,13 +1,7 @@
 import { type Request, type Response, type NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { authConfig } from '../config/auth.config.js';
-
-export interface UserPayload {
-    id: string;
-    role: 'USER' | 'HOST' | 'ADMIN';
-    iat?: number;
-    exp?: number;
-}
+import type { UserPayload } from '../types/types.js';
 
 export interface AuthRequest extends Request {
     user: UserPayload
