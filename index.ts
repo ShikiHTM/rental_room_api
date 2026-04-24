@@ -6,15 +6,21 @@ import bookingRoutes from './routes/booking.routes.js'
 import { errorMiddleware } from './middlewares/error.middleware.js';
 import { serverConfig } from './config/server.config.js';
 import { logger } from './services/logger.service.js';
+import MailWorker from './services/email.service.js';
+import { verifyEmail } from './controllers/auth.controller.js';
 
 export const app: Express = express();
 
-app.use(cors());
-app.use(express.json())
+MailWorker.instance;
 
-app.use('/api/auth', authRoutes)
-app.use('/api/room', roomRoutes)
-app.use('/api/bookings', bookingRoutes)
+app.use(cors());
+app.use(express.json());
+
+app.use('/verify', verifyEmail);
+
+app.use('/api/auth', authRoutes);
+app.use('/api/room', roomRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 app.use(errorMiddleware);
 
