@@ -8,6 +8,7 @@ model User {
     id  String  @id @default(uuid())
     email   String  @unique
     verifiedAt  DateTime?
+    verifyToken String? @unique
     password    String
     fullName    String
     phoneNumber  String?
