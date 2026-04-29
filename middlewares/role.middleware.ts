@@ -6,8 +6,8 @@ export const isAdmin = ( req: AuthRequest, res: Response, next: NextFunction ): 
         return res.status(403).json({
             message: 'Forbidden: Admin access required'
         })
-        next();
     }
+    next();
 }
 
 export const isHost = ( req: AuthRequest, res: Response, next: NextFunction): any => {
