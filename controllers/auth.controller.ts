@@ -36,17 +36,20 @@ export const register = catchAsync(async (req: Request, res: Response) => {
     });
 
     const token = jwt.sign(
-        { userId: newUser.id, role: newUser.role, email: newUser.email },
+        { id: newUser.id, role: newUser.role, email: newUser.email },
         authConfig.JWTSecret,
         { expiresIn: authConfig.expiresIn }
     );
+
+    const mailRandomToken = crypto.randomBytes(32).toString('hex');
+    newUser.verifyToken = crypto.createHash('sha256').update(mailRandomToken).digest('hex');
 
     const mailData: IMailConfig = {
         from: mailConfig.address!,
         to: newUser.email,
         subject: 'Verify your email',
-        text: `Hi ${newUser.fullName}, please verify your email by clicking this link: https://localhost:3000/verify?token=${token}`,
-        html: `<b>Hi ${newUser.fullName}</b>,<br>Click <a href="https://localhost:3000/verify?token=${token}">here</a> to verify your email.`
+        text: `Hi ${newUser.fullName}, please verify your email by clicking this link: http://localhost:3000/verify?token=${mailRandomToken}`,
+        html: `<b>Hi ${newUser.fullName}</b>,<br>Click <a href="http://localhost:3000/verify?token=${mailRandomToken}">here</a> to verify your email.`
     }
     
     await QueueService.sendToEmailQueue(mailData);
@@ -55,7 +58,8 @@ export const register = catchAsync(async (req: Request, res: Response) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
-        sameSite: 'strict'
+        sameSite: 'strict',
+        signed: true
     }).json({
         message: "Register successfully!",
         userId: newUser.id,
@@ -80,7 +84,7 @@ export const login = catchAsync(async (req: Request, res: Response) => {
     };
 
     const token = jwt.sign(
-        { userId: user.id, role: user.role },
+        { id: user.id, role: user.role },
         authConfig.JWTSecret,
         { expiresIn: authConfig.expiresIn }
     );
@@ -89,7 +93,8 @@ export const login = catchAsync(async (req: Request, res: Response) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
-        sameSite: 'strict'
+        sameSite: 'strict',
+        signed: true
     }).json({
         message: 'Login Successfully.',
         user: {
@@ -102,6 +107,7 @@ export const login = catchAsync(async (req: Request, res: Response) => {
 })
 
 export const getMe = catchAsync(async (req: Request, res: Response) => {
+    console.log(req.user.id)
     const user = await db.user.findUnique({
         where: { id: req.user.id },
         select: {
@@ -124,10 +130,10 @@ export const verifyEmail = catchAsync(async (req: Request, res: Response) => {
         throw {status: 400, message: 'Invalid or missing token'};
     }
 
-    const decoded = jwt.verify(token, authConfig.JWTSecret) as {userId: string, role: string, email: string};
+    const decoded = jwt.verify(token, authConfig.JWTSecret) as {id: string, role: string, email: string};
 
     await db.user.update({
-        where: {id: decoded.userId},
+        where: {id: decoded.id},
         data: {verifiedAt: new Date()}
     })
 
@@ -166,10 +172,10 @@ export const sendResetLinkEmail = catchAsync(async (req: Request, res: Response)
             to: user.email,
             subject: 'Reset your password',
             text: `Hi ${user.fullName}, we have received your recovery password request. if this is not your doing, please ignore this email`,
-            html: `<b>Hi ${user.fullName}</b>,<br>Click <a href="https://localhost:3000/reset-password?token=${token}">here</a> to reset your password.`
+            html: `<b>Hi ${user.fullName}</b>,<br>Click <a href="http://localhost:3000/reset-password?token=${token}">here</a> to reset your password.`
         };
 
-        QueueService.sendToEmailQueue(mailData);
+        await QueueService.sendToEmailQueue(mailData);
     }
 
     return res.status(200).json({

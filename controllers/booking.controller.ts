@@ -24,7 +24,7 @@ export const createBooking = catchAsync(async (req: Request, res: Response) => {
                 {
                     AND: [
                         { checkInDate: { lt: end } },
-                        { checkOutDate: { lt: start } },
+                        { checkOutDate: { gt: start } },
                     ]
                 }
             ]
