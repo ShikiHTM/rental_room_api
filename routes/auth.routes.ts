@@ -6,7 +6,7 @@ import rateLimit from "express-rate-limit";
 
 const router: Router = Router();
 const rateLimiter = rateLimit({
-    windowMs: 15,
+    windowMs: 15 * 60 * 1000,
     limit: 100,
     message: 'Too many request!'
 })
