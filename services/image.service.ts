@@ -1,60 +1,31 @@
-import sharp from 'sharp';
+import sharp, { type Sharp } from 'sharp';
 
 export default class ImageProcessor {
-    private buffer: Buffer;
-    private fileName: string
+    private pipeline: Sharp;
 
-    constructor(fileBase64: string, fileName: string = 'image') {
+    constructor(fileBase64: string) {
         const base64Data = fileBase64.split(',')[1] || fileBase64;
-        this.buffer = Buffer.from(base64Data, 'base64');
-        this.fileName = fileName;
+        this.pipeline = sharp(Buffer.from(base64Data, 'base64'));
     }
 
-    /**
-     * Resizes image to desires dimension
-     * @param width Width of the dimension
-     * @param height Height of the dimension
-     * @returns resized image
-     */
-    public async resize(width: number, height: number = width) {
-        this.buffer = await sharp(this.buffer)
-            .resize(width, height, {
-                fit: 'inside',
-                withoutEnlargement: true
-            })
-            .toBuffer()
-
+    public resize(width: number, height: number = width) {
+        this.pipeline = this.pipeline.resize(width, height, {
+            fit: 'inside',
+            withoutEnlargement: true
+        });
         return this;
     }
 
-    /**
-     * Compress and convert the extension to Webp
-     * @param quality The quality of the image
-     * @returns converted image
-     */
-    public async optimize(quality: number = 75) {
-        this.buffer = await sharp(this.buffer)
-            .webp({
-                quality
-            })
-            .toBuffer();
-
+    public optimize(quality: number = 75) {
+        this.pipeline = this.pipeline.webp({ quality });
         return this;
     }
 
-    public getBuffer() {
-        return this.buffer;
+    public async toBuffer() {
+        return this.pipeline.toBuffer();
     }
 
-    public getFilename() {
-        return this.fileName;
-    }
-
-    /**
-     * Get image's metadata
-     * @returns image's metadata
-     */
     public async getMetadata() {
-        return await sharp(this.buffer).metadata();
+        return this.pipeline.metadata();
     }
 }

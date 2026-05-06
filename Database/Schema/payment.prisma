@@ -23,9 +23,6 @@ model Payment {
     bookingId   String
     booking     Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
-    userId  String
-    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
     createdAt   DateTime    @default(now())
     updatedAt   DateTime    @updatedAt
 }

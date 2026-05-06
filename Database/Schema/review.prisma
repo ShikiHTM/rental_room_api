@@ -4,11 +4,18 @@ model Review {
     comment String?
 
     userId  String
-    user    User    @relation(fields: [userId], references: [id])
+    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     roomId  String
-    room    Room    @relation(fields: [roomId], references: [id])
+    room    Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 
     // Allow image uploading
     images  ReviewImage[]
+
+    // Only stayed room can be reviewed
+    bookingId   String  @unique
+    booking     Booking     @relation(fields: [bookingId], references: [id])
 }

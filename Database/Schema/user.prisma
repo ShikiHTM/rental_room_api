@@ -16,9 +16,10 @@ model User {
     createdAt    DateTime    @default(now())
     updatedAt   DateTime    @updatedAt
 
+    passwordResetToken  PasswordResetToken[]
+
     rooms   Room[]
     bookings    Booking[]
 
     reviews     Review[]
-    payments    Payment[]
 }

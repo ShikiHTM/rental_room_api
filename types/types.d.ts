@@ -1,3 +1,8 @@
+export interface ApiResponse<T = unknown> {
+    message?: string;
+    data?: T;
+}
+
 export interface IMailConfig {
     from: string,
     to: string,
@@ -9,6 +14,7 @@ export interface IMailConfig {
 
 export interface UserPayload {
     id: string;
+    email?: string;
     role: 'USER' | 'HOST' | 'ADMIN';
     iat?: number;
     exp?: number;

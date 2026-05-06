@@ -2,11 +2,8 @@ import { type Request, type Response, type NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { authConfig } from '../config/auth.config.js';
 import type { UserPayload } from '../types/types.js';
-import { logger } from '../services/logger.service.js';
 
-export interface AuthRequest extends Request {
-    user: UserPayload
-}
+export type AuthRequest = Omit<Request, 'user'> & { user: UserPayload };
 
 export const verifyToken = (req: Request, res: Response, next: NextFunction): any => {
     // Get token from cookies

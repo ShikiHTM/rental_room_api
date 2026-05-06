@@ -9,5 +9,5 @@ model ReviewImage {
 
     // Relation
     reviewId    String
-    review      Review  @relation(fields: [reviewId], references: [id])
+    review      Review  @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 }

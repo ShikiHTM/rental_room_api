@@ -3,9 +3,10 @@ import db from '../Database/Utils/db.js'
 import { type AuthRequest } from '../middlewares/auth.middleware.js'
 import { roomService } from "../services/room.service.js";
 import { catchAsync } from "../Utils/catchAsync.utils.js";
+import { BadRequestError, ForbiddenError, NotFoundError } from "../Utils/AppError.js";
 
 export const applyToBeHost = catchAsync(async (req: AuthRequest, res: Response) => {
-    if (req.user.role !== 'USER') return res.status(400).json({ message: 'You are already a Host' });
+    if (req.user.role !== 'USER') throw new BadRequestError('You are already a Host');
 
     const newRoom = await roomService.handleRoomCreation(req.user.id, req.body);
 
@@ -18,9 +19,9 @@ export const createRoom = catchAsync(async (req: AuthRequest, res: Response) => 
         where: { hostId: req.user.id, status: 'PENDING' }
     })
 
-    if (pendingRoom) return res.status(400).json({
-        message: 'You already have a pending application.'
-    })
+    if(req.user?.role === 'USER') throw new ForbiddenError('You are not allowed to do this.');
+
+    if (pendingRoom) throw new BadRequestError('You already have a pending application.');
 
     const newRoom = await roomService.handleRoomCreation(req.user.id, req.body);
 
@@ -28,17 +29,24 @@ export const createRoom = catchAsync(async (req: AuthRequest, res: Response) => 
 });
 
 // GET /room (public)
-export const getAllRooms = catchAsync(async (req: Request, res: Response) => {
+export const getRooms = catchAsync(async (_req: Request, res: Response) => {
+
+    const isAdmin = _req.user?.role === 'ADMIN';   
+
     const rooms = await db.room.findMany({
-        where: { status: 'APPROVED' },
-        include: { host: { select: { fullName: true } } }
+        ...(isAdmin ? {} : { where: {status: 'APPROVED'} }),
+        include: {
+            host: {
+                select: { fullName: true }
+            }
+        }
     })
 
     return res.status(200).json({ data: rooms })
 });
 
 // GET /room/:id (public)
-export const getRoomById = catchAsync(async (req: Request, res: Response): Promise<any> => {
+export const getRoom = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params as { id: string };
     const room = await db.room.findUnique({
         where: { id },
@@ -52,15 +60,20 @@ export const getRoomById = catchAsync(async (req: Request, res: Response): Promi
         }
     })
 
-    if (!room) {
-        return res.status(404).json({ message: 'Room not found.' })
+    if (!room) throw new NotFoundError('Room not found.');
+
+    if(room.status !== 'APPROVED') {
+        const isAdmin = req.user?.role === 'ADMIN';
+        const isOwner = req.user?.id === room.hostId;
+
+        if(!isAdmin && !isOwner) throw new NotFoundError('Room not found.');
     }
 
     res.status(200).json({ data: room });
 });
 
 // PUT /room/[:id] (Owner/Admin only)
-export const updateRoom = catchAsync(async (req: AuthRequest, res: Response): Promise<any> => {
+export const updateRoom = catchAsync(async (req: AuthRequest, res: Response) => {
     const roomId = req.params.id as string;
 
     const updatedRoom = await roomService.handleRoomUpdate(roomId, req.user, req.body)
@@ -72,7 +85,7 @@ export const updateRoom = catchAsync(async (req: AuthRequest, res: Response): Pr
 })
 
 // DELETE /room/[:id] (Admin and Room Owner)
-export const deleteRoom = catchAsync(async (req: AuthRequest, res: Response): Promise<any> => {
+export const deleteRoom = catchAsync(async (req: AuthRequest, res: Response) => {
     const roomId = req.params.id as string;
 
     await roomService.handleDeleteRoom(roomId, req.user);

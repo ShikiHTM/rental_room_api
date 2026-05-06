@@ -19,7 +19,7 @@ model Room {
   updatedAt     DateTime @updatedAt
 
   hostId        String
-  host          User     @relation(fields: [hostId], references: [id])
+  host          User     @relation(fields: [hostId], references: [id], onDelete: Cascade)
   
   bookings      Booking[]
   reviews       Review[]

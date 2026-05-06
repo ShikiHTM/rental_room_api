@@ -7,13 +7,13 @@ const router: Router = Router();
 
 // Public Routes
 
-router.get('/', roomCrtl.getAllRooms);
-router.get('/:id', roomCrtl.getRoomById);
+router.get('/', roomCrtl.getRooms);
+router.get('/:id', roomCrtl.getRoom);
 
 // Protected Routes
 
 router.post('/apply', verifyToken, roomCrtl.applyToBeHost);
-router.post('/create', verifyToken, role.isHost, roomCrtl.createRoom);
+router.post('/create', verifyToken, roomCrtl.createRoom);
 
 // Host/Admin Routes
 

@@ -3,35 +3,42 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken'
 import db from '../Database/Utils/db.js';
 import { authConfig } from "../config/auth.config.js";
+import { serverConfig } from "../config/server.config.js";
 import { catchAsync } from "../Utils/catchAsync.utils.js";
 import type { IMailConfig } from "../types/types.js";
 import QueueService from "../services/rabbitmq.service.js";
 import { mailConfig } from "../config/mail.config.js";
 import crypto from 'node:crypto'
 import dayjs from "dayjs";
+import type { AuthRequest } from "../middlewares/auth.middleware.js";
+import { BadRequestError, NotFoundError } from "../Utils/AppError.js";
 
 export const register = catchAsync(async (req: Request, res: Response) => {
     const { email, password, fullName, phoneNumber } = req.body;
 
     if (!email || !password || !fullName || email.trim() === '' || password.trim() == '') {
-        throw { status: 400, message: "Missing or empty required fields." }
+        throw new BadRequestError("Missing or empty required fields.");
     }
 
     const existingUser = await db.user.findUnique({ where: { email } });
 
     if (existingUser) {
-        throw { status: 400, message: "Email has been used." }
+        throw new BadRequestError("Email has been used.")
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const mailRandomToken = crypto.randomBytes(32).toString('hex');
+    const hashedVerifyToken = crypto.createHash('sha256').update(mailRandomToken).digest('hex');
+
     const newUser = await db.user.create({
         data: {
-            email: email,
+            email,
             password: hashedPassword,
-            fullName: fullName,
-            phoneNumber: phoneNumber,
+            fullName,
+            phoneNumber,
+            verifyToken: hashedVerifyToken,
         }
     });
 
@@ -41,23 +48,20 @@ export const register = catchAsync(async (req: Request, res: Response) => {
         { expiresIn: authConfig.expiresIn }
     );
 
-    const mailRandomToken = crypto.randomBytes(32).toString('hex');
-    newUser.verifyToken = crypto.createHash('sha256').update(mailRandomToken).digest('hex');
-
     const mailData: IMailConfig = {
         from: mailConfig.address!,
         to: newUser.email,
         subject: 'Verify your email',
-        text: `Hi ${newUser.fullName}, please verify your email by clicking this link: http://localhost:3000/verify?token=${mailRandomToken}`,
-        html: `<b>Hi ${newUser.fullName}</b>,<br>Click <a href="http://localhost:3000/verify?token=${mailRandomToken}">here</a> to verify your email.`
+        text: `Hi ${newUser.fullName}, please verify your email by clicking this link: ${serverConfig.frontendUrl}/verify?token=${mailRandomToken}`,
+        html: `<b>Hi ${newUser.fullName}</b>,<br>Click <a href="${serverConfig.frontendUrl}/verify?token=${mailRandomToken}">here</a> to verify your email.`
     }
-    
+
     await QueueService.sendToEmailQueue(mailData);
 
-    return res.status(200).cookie('token', token, {
+    return res.status(201).cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
+        maxAge: 7 * 24 * 60 * 60 * 1000,
         sameSite: 'strict',
         signed: true
     }).json({
@@ -70,17 +74,17 @@ export const login = catchAsync(async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
     if (!email || !password || email.trim() === '' || password.trim() == '') {
-        throw { status: 400, message: 'Missing or empty required fields.' };
+        throw new BadRequestError("Missing or empty required fields.")
     };
 
     const user = await db.user.findUnique({ where: { email } });
     if (!user) {
-        throw { status: 400, message: "Invalid username or password." };
+        throw new BadRequestError("Invalid username or password.");
     };
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-        throw { status: 400, message: "Invalid username or password." };
+        throw new BadRequestError("Invalid username or password.");
     };
 
     const token = jwt.sign(
@@ -92,7 +96,7 @@ export const login = catchAsync(async (req: Request, res: Response) => {
     return res.status(200).cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
+        maxAge: 7 * 24 * 60 * 60 * 1000,
         sameSite: 'strict',
         signed: true
     }).json({
@@ -104,66 +108,64 @@ export const login = catchAsync(async (req: Request, res: Response) => {
             role: user.role
         }
     });
-})
+});
 
-export const getMe = catchAsync(async (req: Request, res: Response) => {
-    console.log(req.user.id)
-    const user = await db.user.findUnique({
-        where: { id: req.user.id },
-        select: {
-            id: true,
-            email: true,
-            fullName: true,
-            role: true,
-        }
+export const logout = catchAsync(async (req: AuthRequest, res: Response) => {
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        signed: true
     });
-
-    if (!user) throw { status: 400, message: "User not found" };
-
-    return res.status(200).json({ data: user });
+    return res.status(200).json({ message: 'Logout successfully' })
 })
 
 export const verifyEmail = catchAsync(async (req: Request, res: Response) => {
     const { token } = req.query;
 
-    if(!token || typeof token !== 'string') {
-        throw {status: 400, message: 'Invalid or missing token'};
+    if (!token || typeof token !== 'string') {
+        throw new BadRequestError("Invalid or missing token.")
     }
 
-    const decoded = jwt.verify(token, authConfig.JWTSecret) as {id: string, role: string, email: string};
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await db.user.findFirst({ where: { verifyToken: hashedToken } });
+
+    if (!user) {
+        throw new BadRequestError("Invalid or expired token.");
+    }
 
     await db.user.update({
-        where: {id: decoded.id},
-        data: {verifiedAt: new Date()}
-    })
+        where: { id: user.id },
+        data: { verifiedAt: new Date(), verifyToken: null }
+    });
 
     return res.status(200).json({
         message: "Your account is verified successfully"
-    })
+    });
 })
 
 // POST /auth/forgot-password
-export const sendResetLinkEmail = catchAsync(async (req: Request, res: Response) => { 
+export const forgotPassword = catchAsync(async (req: Request, res: Response) => {
     const { email } = req.body;
 
     if (!email) {
-        throw { status: 400, message: 'Missing required fields' };
+        throw new BadRequestError("Mising required fields.");
     }
 
     const token = crypto.randomBytes(32).toString('hex');
-    
-    const user = await db.user.findUnique({ where: {email} });
 
-    if(user) {
-        await db.passwordResetTokens.deleteMany({
-            where: {userId: user.id}
+    const user = await db.user.findUnique({ where: { email } });
+
+    if (user) {
+        await db.passwordResetToken.deleteMany({
+            where: { userId: user.id }
         })
 
-        await db.passwordResetTokens.create({
+        await db.passwordResetToken.create({
             data: {
                 userId: user.id,
                 token: crypto.createHash('sha256').update(token).digest('hex'),
-                expiredAt: new Date(Date.now() + 1000 * 60 * 60), // Expire after 60 minutes
+                expiredAt: new Date(Date.now() + 1000 * 60 * 60),
             }
         });
 
@@ -171,60 +173,59 @@ export const sendResetLinkEmail = catchAsync(async (req: Request, res: Response)
             from: mailConfig.address!,
             to: user.email,
             subject: 'Reset your password',
-            text: `Hi ${user.fullName}, we have received your recovery password request. if this is not your doing, please ignore this email`,
-            html: `<b>Hi ${user.fullName}</b>,<br>Click <a href="http://localhost:3000/reset-password?token=${token}">here</a> to reset your password.`
+            text: `Hi ${user.fullName}, we have received your recovery password request. If this is not your doing, please ignore this email.`,
+            html: `<b>Hi ${user.fullName}</b>,<br>Click <a href="${serverConfig.frontendUrl}/reset-password?token=${token}">here</a> to reset your password.`
         };
 
         await QueueService.sendToEmailQueue(mailData);
     }
 
     return res.status(200).json({
-        'message': 'If your email is in our system, you will receive a reset link shortly!'
+        message: 'If your email is in our system, you will receive a reset link shortly!'
     })
 })
 
 // POST /auth/reset-password
-export const reset = catchAsync(async (req: Request, res: Response) => {
-    const {token, password} = req.body;
+export const resetPassword = catchAsync(async (req: Request, res: Response) => {
+    const { token, password } = req.body;
 
     if (!token || !password) {
-        throw { status: 400, message: 'Missing required fields' };
+        throw new BadRequestError("Mising required fields.");
     }
 
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex') 
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
 
-    const record = await db.passwordResetTokens.findUnique({
+    const record = await db.passwordResetToken.findUnique({
         where: { token: hashedToken }
     })
 
-    if(!record) {
-        throw {status: 400, message: 'token is invalid'}
+    if (!record) {
+        throw new BadRequestError("Token is invalid.");
     }
 
-    if(dayjs().isAfter(record.expiredAt)) {
-        await db.passwordResetTokens.delete({
+    if (dayjs().isAfter(record.expiredAt)) {
+        await db.passwordResetToken.delete({
             where: { token: hashedToken }
         })
-        throw {status: 410, message: 'token is expired'}
+        throw new BadRequestError("Token is expired.")
     }
 
-    const user = await db.user.findUnique({ where: {id: record.userId}} );
+    const user = await db.user.findUnique({ where: { id: record.userId } });
 
-    if(!user) {
-        throw {status: 404, message: 'User not found'}
+    if (!user) {
+        throw new NotFoundError("User not found.");
     }
 
     await db.user.update({
-        where: {id: record.userId},
-        data: {
-            password: await bcrypt.hash(password, 10)
-        }
+        where: { id: record.userId },
+        data: { password: await bcrypt.hash(password, 10) }
     })
-    await db.passwordResetTokens.deleteMany({
-        where: {userId: record.userId}
+
+    await db.passwordResetToken.deleteMany({
+        where: { userId: record.userId }
     })
 
     return res.status(200).json({
-        'message': 'Your password has been changed successfully'
+        message: 'Your password has been changed successfully'
     })
 })

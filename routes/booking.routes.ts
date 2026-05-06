@@ -1,6 +1,6 @@
 import { Router } from "express";;
 import * as BookingCtrl from "../controllers/booking.controller.js";
-import { type AuthRequest, verifyToken } from "../middlewares/auth.middleware.js";
+import { verifyToken } from "../middlewares/auth.middleware.js";
 
 const router: Router = Router();
 
@@ -8,7 +8,7 @@ const router: Router = Router();
 router.post("/", verifyToken, BookingCtrl.createBooking);
 
 // GET /bookings/my_bookings
-router.get("/my_bookings", verifyToken, BookingCtrl.getMyBooking);
+router.get("/my_bookings", verifyToken, BookingCtrl.getMyBookings);
 
 // PATCH /bookings/:id/cancel
 router.patch("/:id/cancel", verifyToken, BookingCtrl.cancelBooking);

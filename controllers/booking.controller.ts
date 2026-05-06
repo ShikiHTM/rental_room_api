@@ -1,24 +1,27 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import db from '../Database/Utils/db.js'
 import { catchAsync } from "../Utils/catchAsync.utils.js";
+import type { AuthRequest } from "../middlewares/auth.middleware.js";
+import { CreateBookingSchema } from "../Utils/schemas/booking.schema.js";
+import { BadRequestError, ForbiddenError, NotFoundError, ValidationError } from "../Utils/AppError.js";
 
-export const createBooking = catchAsync(async (req: Request, res: Response) => {
+// POST /bookings
+export const createBooking = catchAsync(async (req: AuthRequest, res: Response) => {
     const userId = req.user.id;
-    const { roomId, checkIn, checkOut } = req.body;
 
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
+    const result = CreateBookingSchema.safeParse(req.body);
+    if (!result.success) throw new ValidationError(result.error.issues);
 
-    if (start >= end || start < new Date()) {
-        throw { status: 400, message: 'Invalid dates' }
-    }
+    const { roomId, checkIn: start, checkOut: end } = result.data;
+
+    if (start < new Date()) throw new BadRequestError('Invalid dates');
 
     const room = await db.room.findUnique({ where: { id: roomId } });
-    if (!room) throw { status: 404, message: 'Room not found.' };
+    if (!room) throw new NotFoundError('Room not found.');
 
     const overlappingBooking = await db.booking.findFirst({
         where: {
-            roomId: roomId,
+            roomId,
             status: { in: ['CONFIRMED', 'PENDING'] },
             OR: [
                 {
@@ -31,9 +34,7 @@ export const createBooking = catchAsync(async (req: Request, res: Response) => {
         }
     });
 
-    if (overlappingBooking) {
-        throw { status: 400, message: 'Room is alraedy booked for these dates' };
-    }
+    if (overlappingBooking) throw new BadRequestError('Room is already booked for these dates');
 
     const diffTime = Math.abs(end.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -52,9 +53,9 @@ export const createBooking = catchAsync(async (req: Request, res: Response) => {
     return res.status(201).json({ message: 'Booking requested', booking });
 })
 
-// GET /bookings/my_bookings
-export const getMyBooking = async (req: Request, res: Response) => {
-    const userId = (req.user as any).userId;
+// GET /bookings
+export const getMyBookings = catchAsync(async (req: AuthRequest, res: Response) => {
+    const userId = req.user?.id;
     const bookings = await db.booking.findMany({
         where: { userId },
         include: {
@@ -65,16 +66,16 @@ export const getMyBooking = async (req: Request, res: Response) => {
         orderBy: { createdAt: 'desc' }
     });
     return res.status(200).json({ data: bookings });
-}
+})
 
 // PATCH /bookings/:id/status
-export const updateBookingStatus = catchAsync(async (req: Request, res: Response) => {
+export const updateBookingStatus = catchAsync(async (req: AuthRequest, res: Response) => {
     const { id } = req.params as { id: string };
-    const { status } = req.body; // CONFIRMED or REJECTED
+    const { status } = req.body;
     const userRole = req.user.role;
 
     if (userRole !== 'ADMIN' && userRole !== 'HOST') {
-        throw { status: 403, message: "Forbidden: You're not allow to to do this action" };
+        throw new ForbiddenError("You're not allowed to do this action");
     }
 
     const updatedBooking = await db.booking.update({
@@ -86,17 +87,17 @@ export const updateBookingStatus = catchAsync(async (req: Request, res: Response
 });
 
 // PATCH /bookings/:id/cancel
-export const cancelBooking = catchAsync(async (req: Request, res: Response): Promise<any> => {
+export const cancelBooking = catchAsync(async (req: AuthRequest, res: Response) => {
     const { id } = req.params as { id: string };
-    const userId = (req.user as any).userId;
+    const userId = req.user.id;
 
     const booking = await db.booking.findUnique({ where: { id } });
     if (!booking || booking.userId !== userId) {
-        throw { status: 403, message: 'Forbidden: You can only cancel your own bookings' };
+        throw new ForbiddenError('You can only cancel your own bookings');
     }
 
     if (booking.status !== 'PENDING') {
-        throw { status: 403, message: 'Forbidden: Cannot cancel a booking that is already confirmed or completed' };
+        throw new BadRequestError('Cannot cancel a booking that is already confirmed or completed');
     }
 
     await db.booking.update({

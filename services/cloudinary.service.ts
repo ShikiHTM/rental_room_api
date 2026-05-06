@@ -2,6 +2,7 @@ import { v2 as cloudinary } from 'cloudinary'
 import { cloudinaryConfig } from '../config/cloudinary.config.js';
 import ImageProcessor from './image.service.js';
 import { logger } from './logger.service.js';
+import crypto from 'node:crypto';
 
 export interface UploadResponse {
     image_url: string;
@@ -23,18 +24,21 @@ class Cloudinary {
      * @returns {Promise<UploadResponse>}
      */
     public async upload(fileBase64: string): Promise<UploadResponse> {
-        const image = new ImageProcessor(fileBase64);
-
-        await image.optimize(75);
-        await image.resize(1200);
+        const buffer = await new ImageProcessor(fileBase64)
+            .optimize(75)
+            .resize(1200)
+            .toBuffer();
 
         try {
-            const buffer = image.getBuffer();
 
             return new Promise((resolve, reject) => {
+                const hash = crypto.createHash('sha256').update(buffer).digest('hex');
+
                 const stream = cloudinary.uploader.upload_stream(
                     {
                         folder: "rental_room",
+                        public_id: hash,
+                        overwrite: true,
                         resource_type: 'auto'
                     },
                     (error, result) => {

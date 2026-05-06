@@ -1,9 +1,9 @@
-import { UserPayload } from '../middlewares/auth.middleware.ts'
+import { UserPayload } from "./types.js";
 
 declare global {
     namespace Express {
         interface Request {
-            user: UserPayload;
+            user?: UserPayload;
         }
     }
 }

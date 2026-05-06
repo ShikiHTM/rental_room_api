@@ -64,7 +64,7 @@ export default class MailWorker {
                         channel.ack(msg);
                     } catch(error) {
                         logger.error(`Failed to process email task: `, error);
-                        channel.nack(msg);
+                        channel.nack(msg, false, false);
                     }
                 }
             })
