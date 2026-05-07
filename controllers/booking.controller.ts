@@ -18,6 +18,7 @@ export const createBooking = catchAsync(async (req: AuthRequest, res: Response) 
 
     const room = await db.room.findUnique({ where: { id: roomId } });
     if (!room) throw new NotFoundError('Room not found.');
+    if (room.status !== 'APPROVED') throw new BadRequestError('This room is not available for booking.');
 
     const overlappingBooking = await db.booking.findFirst({
         where: {
@@ -74,7 +75,16 @@ export const updateBookingStatus = catchAsync(async (req: AuthRequest, res: Resp
     const { status } = req.body;
     const userRole = req.user.role;
 
+    const VALID_STATUSES = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'];
+    if (!VALID_STATUSES.includes(status)) throw new BadRequestError("Invalid status.");
+
     if (userRole !== 'ADMIN' && userRole !== 'HOST') {
+        throw new ForbiddenError("You're not allowed to do this action");
+    }
+
+    const booking = await db.booking.findUnique({ where: { id }, include: { room: true } });
+    if (!booking) throw new NotFoundError('Booking not found.');
+    if (userRole === 'HOST' && booking.room.hostId !== req.user.id) {
         throw new ForbiddenError("You're not allowed to do this action");
     }
 
