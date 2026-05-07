@@ -248,6 +248,22 @@ const options: swaggerJsdoc.Options = {
             },
 
             // ─── Rooms ───────────────────────────────────────────────────────
+            '/rooms/search': {
+                get: {
+                    tags: ['Rooms'],
+                    summary: 'Tìm kiếm phòng (Meilisearch)',
+                    parameters: [
+                        { in: 'query', name: 'q', schema: { type: 'string' }, description: 'Từ khóa tìm kiếm' },
+                        { in: 'query', name: 'city', schema: { type: 'string' }, description: 'Lọc theo thành phố' },
+                        { in: 'query', name: 'minPrice', schema: { type: 'number' }, description: 'Giá tối thiểu' },
+                        { in: 'query', name: 'maxPrice', schema: { type: 'number' }, description: 'Giá tối đa' },
+                        { in: 'query', name: 'maxGuests', schema: { type: 'integer' }, description: 'Số khách tối đa' },
+                    ],
+                    responses: {
+                        200: { description: 'Kết quả tìm kiếm phòng', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/Room' } } } } },
+                    },
+                },
+            },
             '/rooms': {
                 get: {
                     tags: ['Rooms'],
@@ -622,6 +638,22 @@ const options: swaggerJsdoc.Options = {
                     summary: 'Lấy tất cả booking trong hệ thống',
                     security: [{ cookieAuth: [] }],
                     responses: { 200: { description: 'Danh sách booking' } },
+                },
+            },
+            '/admin/bookings/search': {
+                get: {
+                    tags: ['Admin'],
+                    summary: 'Tìm kiếm booking (Meilisearch)',
+                    security: [{ cookieAuth: [] }],
+                    parameters: [
+                        { in: 'query', name: 'q', schema: { type: 'string' }, description: 'Từ khóa tìm kiếm' },
+                        { in: 'query', name: 'status', schema: { type: 'string', enum: ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'] }, description: 'Lọc theo trạng thái' },
+                        { in: 'query', name: 'userId', schema: { type: 'string', format: 'uuid' }, description: 'Lọc theo user' },
+                        { in: 'query', name: 'roomId', schema: { type: 'string', format: 'uuid' }, description: 'Lọc theo phòng' },
+                    ],
+                    responses: {
+                        200: { description: 'Kết quả tìm kiếm booking' },
+                    },
                 },
             },
             '/admin/bookings/{id}/status': {

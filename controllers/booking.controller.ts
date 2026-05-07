@@ -4,6 +4,23 @@ import { catchAsync } from "../Utils/catchAsync.utils.js";
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
 import { CreateBookingSchema } from "../Utils/schemas/booking.schema.js";
 import { BadRequestError, ForbiddenError, NotFoundError, ValidationError } from "../Utils/AppError.js";
+import { meiliService } from "../services/meilisearch.service.js";
+import type { IBookingDocument } from "../types/types.js";
+
+const toBookingDoc = (booking: any): IBookingDocument => ({
+    id: booking.id,
+    status: booking.status,
+    checkInDate: booking.checkInDate.toISOString(),
+    checkOutDate: booking.checkOutDate.toISOString(),
+    totalPrice: Number(booking.totalPrice),
+    userId: booking.userId,
+    userName: booking.user?.fullName ?? '',
+    userEmail: booking.user?.email ?? '',
+    roomId: booking.roomId,
+    roomTitle: booking.room?.title ?? '',
+    roomCity: booking.room?.city ?? '',
+    createdAt: booking.createdAt.toISOString(),
+});
 
 // POST /bookings
 export const createBooking = catchAsync(async (req: AuthRequest, res: Response) => {
@@ -41,16 +58,16 @@ export const createBooking = catchAsync(async (req: AuthRequest, res: Response) 
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     const totalPrice = diffDays * Number(room.pricePerNight);
 
+    const user = await db.user.findUnique({ where: { id: userId }, select: { fullName: true, email: true } });
+
     const booking = await db.booking.create({
-        data: {
-            checkInDate: start,
-            checkOutDate: end,
-            totalPrice,
-            userId,
-            roomId,
-            status: 'PENDING'
-        }
-    })
+        data: { checkInDate: start, checkOutDate: end, totalPrice, userId, roomId, status: 'PENDING' }
+    });
+
+    await meiliService.upsertBooking(toBookingDoc({
+        ...booking, user, room,
+    }));
+
     return res.status(201).json({ message: 'Booking requested', booking });
 })
 
@@ -90,8 +107,11 @@ export const updateBookingStatus = catchAsync(async (req: AuthRequest, res: Resp
 
     const updatedBooking = await db.booking.update({
         where: { id },
-        data: { status }
+        data: { status },
+        include: { user: { select: { fullName: true, email: true } }, room: { select: { title: true, city: true } } }
     });
+
+    await meiliService.upsertBooking(toBookingDoc(updatedBooking));
 
     return res.status(200).json({ message: `Booking ${status.toLowerCase()} successfully`, data: updatedBooking });
 });
@@ -110,10 +130,13 @@ export const cancelBooking = catchAsync(async (req: AuthRequest, res: Response) 
         throw new BadRequestError('Cannot cancel a booking that is already confirmed or completed');
     }
 
-    await db.booking.update({
+    const cancelled = await db.booking.update({
         where: { id },
-        data: { status: 'CANCELLED' }
+        data: { status: 'CANCELLED' },
+        include: { user: { select: { fullName: true, email: true } }, room: { select: { title: true, city: true } } }
     });
+
+    await meiliService.upsertBooking(toBookingDoc(cancelled));
 
     return res.status(200).json({ message: 'Booking cancelled' });
 });

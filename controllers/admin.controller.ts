@@ -3,6 +3,7 @@ import db from "../Database/Utils/db.js"
 import { catchAsync } from "../Utils/catchAsync.utils.js";
 import { BadRequestError, NotFoundError } from "../Utils/AppError.js";
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
+import { meiliService } from "../services/meilisearch.service.js";
 
 export const approveRoom = catchAsync(async (req: AuthRequest, res: Response) => {
     const { roomId } = req.params as { roomId: string };
@@ -39,16 +40,30 @@ export const approveRoom = catchAsync(async (req: AuthRequest, res: Response) =>
     }
 
     await db.$transaction(updateTasks)
+    await meiliService.upsertRoom({
+        id: room.id, title: room.title, description: room.description,
+        address: room.address, city: room.city,
+        pricePerNight: Number(room.pricePerNight), maxGuests: room.maxGuests,
+        status: 'APPROVED', hostId: room.hostId,
+        hostName: room.host.fullName, createdAt: room.createdAt.toISOString(),
+    });
     return res.status(200).json({ message: 'Room approved' });
 })
 
 export const rejectRoom = catchAsync(async (req: AuthRequest, res: Response) => {
     const { roomId } = req.params as { roomId: string };
 
-    const room = await db.room.findUnique({ where: { id: roomId } });
+    const room = await db.room.findUnique({ where: { id: roomId }, include: { host: true } });
     if (!room) throw new NotFoundError('Room not found.');
 
     await db.room.update({ where: { id: roomId }, data: { status: 'REJECTED' } });
+    await meiliService.upsertRoom({
+        id: room.id, title: room.title, description: room.description,
+        address: room.address, city: room.city,
+        pricePerNight: Number(room.pricePerNight), maxGuests: room.maxGuests,
+        status: 'REJECTED', hostId: room.hostId,
+        hostName: room.host.fullName, createdAt: room.createdAt.toISOString(),
+    });
     return res.status(200).json({ message: 'Room rejected.' });
 })
 
@@ -66,6 +81,18 @@ export const getAllBookings = catchAsync( async(_req: AuthRequest, res: Response
         orderBy: { createdAt: 'desc' }
     });
     return res.status(200).json({ data: bookings });
+})
+
+export const searchBookings = catchAsync(async (req: AuthRequest, res: Response) => {
+    const { q = '', status, userId, roomId } = req.query;
+
+    const result = await meiliService.searchBookings(q as string, {
+        ...(status && { status: status as string }),
+        ...(userId && { userId: userId as string }),
+        ...(roomId && { roomId: roomId as string }),
+    });
+
+    return res.status(200).json({ data: result.hits });
 })
 
 // PATCH /users/:id/ban

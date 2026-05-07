@@ -23,6 +23,7 @@ router.patch('/users/:id/unban', adminCtrl.unbanUser);
 
 // Bookings
 router.get('/bookings', adminCtrl.getAllBookings);
+router.get('/bookings/search', adminCtrl.searchBookings);
 router.patch('/bookings/:id/status', bookingCtrl.updateBookingStatus);
 
 export default router;
