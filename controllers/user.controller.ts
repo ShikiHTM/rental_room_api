@@ -8,7 +8,15 @@ import { ValidationError } from "../Utils/AppError.js";
 
 // GET /user
 export const me = catchAsync(async (req: AuthRequest, res: Response) => {
-    return res.status(200).json({ data: req.user });
+    const user = await db.user.findUnique({
+        where: { id: req.user.id },
+        select: {
+            id: true, email: true, fullName: true, phoneNumber: true, role: true,
+            verifiedAt: true, bannedAt: true, banReason: true, banExpiresAt: true, createdAt: true
+        }
+    });
+    if (!user) return res.status(401).json({ message: 'User not found.' });
+    return res.status(200).json({ data: user });
 })
 
 export const update = catchAsync(async (req: AuthRequest, res: Response) => {   
