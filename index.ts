@@ -1,5 +1,6 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
 import v1Router from './routes/v1.routes.js';
 import { errorMiddleware } from './middlewares/error.middleware.js';
 import { serverConfig } from './config/server.config.js';
@@ -7,10 +8,13 @@ import { logger } from './services/logger.service.js';
 import MailWorker from './services/email.service.js';
 import cookieParser from 'cookie-parser';
 import { authConfig } from './config/auth.config.js';
+import { startCancelExpiredBookingsJob } from './jobs/cancelExpiredBookings.js';
+import { swaggerSpec } from './config/swagger.config.js';
 
 export const app: Express = express();
 
 MailWorker.instance;
+startCancelExpiredBookingsJob();
 
 app.use(cors({
     origin: serverConfig.frontendUrl,
@@ -20,6 +24,7 @@ app.use(express.json());
 app.use(cookieParser(authConfig.JWTSecret));
 
 app.use('/api/v1', v1Router);
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(errorMiddleware);
 
