@@ -2,7 +2,7 @@ import db from "../Database/Utils/db.js";
 import { cloudinaryService } from "./cloudinary.service.js";
 import { CreateRoomSchema, UpdateRoomSchema, type RoomInput, type UpdateRoomInput } from "../Utils/schemas/room.schema.js";
 import { type UploadResponse } from "./cloudinary.service.js";
-import type { UserPayload } from "../types/types.js";
+import type { IUserPayload } from "../types/types.js";
 import { removeUndefined } from "../Utils/cleanData.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../Utils/AppError.js";
 
@@ -44,7 +44,7 @@ export class RoomService {
         }
     }
 
-    public async handleRoomUpdate(roomId: string, user: UserPayload, body: unknown) {
+    public async handleRoomUpdate(roomId: string, user: IUserPayload, body: unknown) {
         const result = UpdateRoomSchema.safeParse(body)
 
         if (!result.success) {
@@ -108,7 +108,7 @@ export class RoomService {
         }
     }
 
-    public async handleDeleteRoom(roomId: string, user: UserPayload) {
+    public async handleDeleteRoom(roomId: string, user: IUserPayload) {
         const room = await db.room.findUnique({
             where: { id: roomId }
         })

@@ -1,5 +1,5 @@
 import db from "../Database/Utils/db.js";
-import type { UserPayload } from "../types/types.js";
+import type { IUserPayload } from "../types/types.js";
 import { removeUndefined } from "../Utils/cleanData.js";
 import { CreateReviewSchema, UpdateReviewSchema, type UpdateReviewInput } from "../Utils/schemas/review.schema.js";
 import { cloudinaryService, type UploadResponse } from "./cloudinary.service.js";
@@ -42,7 +42,7 @@ export class ReviewService {
         }
     }
 
-    public async handleUpdateReview(reviewId: string, user: UserPayload, body: unknown) {
+    public async handleUpdateReview(reviewId: string, user: IUserPayload, body: unknown) {
         const result = UpdateReviewSchema.safeParse(body);
         if(!result.success) throw new ValidationError(result.error.issues)
 
@@ -54,8 +54,9 @@ export class ReviewService {
         })
 
         if(!review) throw new NotFoundError('Review not found.');
+        const isAdmin = user.role === 'ADMIN';
 
-        if(review.userId !== user.id) throw new ForbiddenError('You are not allowed to do this action.');
+        if(review.userId !== user.id || !isAdmin) throw new ForbiddenError('You are not allowed to do this action.');
 
         const { images, ...otherData }: UpdateReviewInput = result.data;
 
@@ -95,11 +96,14 @@ export class ReviewService {
         };
     }
 
-    public async handleDeleteReview(reviewId: string, user: UserPayload) {
+    public async handleDeleteReview(reviewId: string, user: IUserPayload) {
         const review = await db.review.findUnique({ where: {id: reviewId }});
 
         if(!review) throw new NotFoundError('Review not found.');
-        if(review.userId !== user.id) throw new ForbiddenError('You are not allowed to do this action.');
+        const isAdmin = user.role === 'ADMIN';
+
+        if(review.userId !== user.id || !isAdmin) throw new ForbiddenError('You are not allowed to do this action.');
+
 
         const images = await db.review.findUnique({where: {id: reviewId}}).images();
 
