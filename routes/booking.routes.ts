@@ -1,19 +1,19 @@
 import { Router } from "express";;
 import * as BookingCtrl from "../controllers/booking.controller.js";
-import { verifyToken } from "../middlewares/auth.middleware.js";
+import { checkBanned, verifyToken } from "../middlewares/auth.middleware.js";
 
 const router: Router = Router();
 
 // POST /bookings
-router.post("/", verifyToken, BookingCtrl.createBooking);
+router.post("/", verifyToken, checkBanned, BookingCtrl.createBooking);
 
 // GET /bookings
-router.get("/", verifyToken, BookingCtrl.getMyBookings);
+router.get("/", verifyToken, checkBanned, BookingCtrl.getMyBookings);
 
 // PATCH /bookings/:id/cancel
-router.patch("/:id/cancel", verifyToken, BookingCtrl.cancelBooking);
+router.patch("/:id/cancel", verifyToken, checkBanned, BookingCtrl.cancelBooking);
 
 // PATCH /bookings/:id/status
-router.patch("/:id/status", verifyToken, BookingCtrl.updateBookingStatus);
+router.patch("/:id/status", verifyToken, checkBanned, BookingCtrl.updateBookingStatus);
 
 export default router;
