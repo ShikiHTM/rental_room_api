@@ -110,7 +110,8 @@ export class RoomService {
 
     public async handleDeleteRoom(roomId: string, user: IUserPayload) {
         const room = await db.room.findUnique({
-            where: { id: roomId }
+            where: { id: roomId },
+            include: { images: true }
         })
 
         if (!room) throw new NotFoundError('Room not found');
@@ -122,7 +123,7 @@ export class RoomService {
             throw new ForbiddenError('You do not own this room');
         }
 
-        const images = await db.room.findUnique({ where: {id: roomId} }).images();
+        const images = room.images;
 
         await Promise.allSettled(
             (images || []).map((img) => cloudinaryService.destroy(img.publicId))
