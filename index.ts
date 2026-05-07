@@ -10,11 +10,13 @@ import cookieParser from 'cookie-parser';
 import { authConfig } from './config/auth.config.js';
 import { startCancelExpiredBookingsJob } from './jobs/cancelExpiredBookings.js';
 import { swaggerSpec } from './config/swagger.config.js';
+import { meiliService } from './services/meilisearch.service.js';
 
 export const app: Express = express();
 
 MailWorker.instance;
 startCancelExpiredBookingsJob();
+meiliService.setup();
 
 app.use(cors({
     origin: serverConfig.frontendUrl,

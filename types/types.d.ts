@@ -27,3 +27,32 @@ export interface IUserPayload {
 export interface IPaymentStrategy {
     pay: (amount: number) => Promise<void>;
 }
+
+export interface IRoomDocument {
+    id: string;
+    title: string;
+    description: string | null;
+    address: string;
+    city: string;
+    pricePerNight: number;
+    maxGuests: number;
+    status: string;
+    hostId: string;
+    hostName: string;
+    createdAt: string;
+}
+
+export interface IBookingDocument {
+    id: string;
+    status: string;
+    checkInDate: string;
+    checkOutDate: string;
+    totalPrice: number;
+    userId: string;
+    userName: string;
+    userEmail: string;
+    roomId: string;
+    roomTitle: string;
+    roomCity: string;
+    createdAt: string;
+}
