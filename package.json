@@ -4,7 +4,7 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "dev": "cross-env NODE_ENV=development nodemon --exec tsx index.ts",
+        "dev": "cross-env NODE_ENV=development nodemon --ext ts,js,json --exec tsx index.ts",
         "start": "cross-env NODE_ENV=production node index.ts",
         "generate": "npx prisma generate"
     },
@@ -29,6 +29,7 @@
         "express": "^5.2.1",
         "express-rate-limit": "^8.4.0",
         "jsonwebtoken": "^9.0.3",
+        "meilisearch": "^0.58.0",
         "mongoose": "^9.5.0",
         "multer": "^2.1.1",
         "node-cron": "^4.2.1",
