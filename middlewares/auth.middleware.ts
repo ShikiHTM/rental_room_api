@@ -26,10 +26,15 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction): an
 export const checkBanned = catchAsync(async (req: AuthRequest, res: Response, next: NextFunction) => {
     const user = await db.user.findUnique({
         where: { id: req.user.id },
-        select: { bannedAt: true, banExpiresAt: true, banReason: true }
+        select: {
+            id: true, email: true, fullName: true, phoneNumber: true, role: true,
+            verifiedAt: true, bannedAt: true, banReason: true, banExpiresAt: true, createdAt: true
+        }
     });
 
-    if(user?.bannedAt && (!user.banExpiresAt || user.banExpiresAt > new Date())) {
+    if (!user) return res.status(401).json({ message: 'User not found.' });
+
+    if (user.bannedAt && (!user.banExpiresAt || user.banExpiresAt > new Date())) {
         return res.status(403).json({
             message: 'Your account is banned.',
             banDetails: {
@@ -37,8 +42,9 @@ export const checkBanned = catchAsync(async (req: AuthRequest, res: Response, ne
                 bannedExpiresAt: user.banExpiresAt,
                 banReason: user.banReason
             }
-        })
+        });
     }
 
+    req.dbUser = user;
     next();
 })
