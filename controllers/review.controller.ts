@@ -10,6 +10,9 @@ export const store = catchAsync(async (req: AuthRequest, res: Response) => {
     const result = CreateReviewSchema.safeParse(req.body);
     if(!result.success) throw new ValidationError(result.error.issues);
 
+    const booking = await db.booking.findUnique({ where: {id: result.data.bookingId }});
+    if(booking?.status !== 'COMPLETED') throw new ForbiddenError("You can only review after finish your booking")
+
     const review = await reviewService.handleCreateReview(req.user.id, req.body);
 
     return res.status(200).json({
@@ -19,7 +22,10 @@ export const store = catchAsync(async (req: AuthRequest, res: Response) => {
 })
 
 export const index = catchAsync(async (req: Request, res: Response) => {
+    const { roomId } = req.body;   
+
     const reviews = await db.review.findMany({
+        where: {roomId},
         include: {
             images: true,
             user: {
