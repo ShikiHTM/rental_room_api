@@ -24,4 +24,7 @@ router.post('/forgot-password', rateLimiter, auth.forgotPassword)
 // POST /auth/reset-password
 router.post('/reset-password', auth.resetPassword)
 
+// POST /auth/logout
+router.post('/logout', auth.logout)
+
 export default router;

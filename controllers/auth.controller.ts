@@ -11,14 +11,14 @@ import { mailConfig } from "../config/mail.config.js";
 import crypto from 'node:crypto'
 import dayjs from "dayjs";
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
-import { BadRequestError, NotFoundError } from "../Utils/AppError.js";
+import { BadRequestError, NotFoundError, ValidationError } from "../Utils/AppError.js";
+import { CreateUserSchema, LoginUserSchema } from "../Utils/schemas/user.schema.js";
 
 export const register = catchAsync(async (req: Request, res: Response) => {
-    const { email, password, fullName, phoneNumber } = req.body;
+    const result = CreateUserSchema.safeParse(req.body);
+    if(!result.success) throw new ValidationError(result.error.issues);
 
-    if (!email || !password || !fullName || email.trim() === '' || password.trim() == '') {
-        throw new BadRequestError("Missing or empty required fields.");
-    }
+    const { email, password, fullName, phoneNumber } = result.data;
 
     const existingUser = await db.user.findUnique({ where: { email } });
 
@@ -71,11 +71,10 @@ export const register = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const login = catchAsync(async (req: Request, res: Response) => {
-    const { email, password } = req.body;
+    const result = LoginUserSchema.safeParse(req.body);
+    if(!result.success) throw new BadRequestError("Missing or empty required fields");
 
-    if (!email || !password || email.trim() === '' || password.trim() == '') {
-        throw new BadRequestError("Missing or empty required fields.")
-    };
+    const { email, password } = result.data;
 
     const user = await db.user.findUnique({ where: { email } });
     if (!user) {
