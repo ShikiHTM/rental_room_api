@@ -38,7 +38,8 @@ export const getRooms = catchAsync(async (_req: Request, res: Response) => {
         include: {
             host: {
                 select: { fullName: true }
-            }
+            },
+            reviews: true
         }
     })
 
@@ -56,7 +57,8 @@ export const getRoom = catchAsync(async (req: Request, res: Response) => {
                     fullName: true,
                     email: true
                 }
-            }
+            },
+            reviews: true
         }
     })
 

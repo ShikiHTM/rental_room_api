@@ -110,3 +110,5 @@ export class ReviewService {
         await db.review.delete({ where: {id: reviewId }});
     }
 }
+
+export const reviewService = new ReviewService();

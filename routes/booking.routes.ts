@@ -7,8 +7,8 @@ const router: Router = Router();
 // POST /bookings
 router.post("/", verifyToken, BookingCtrl.createBooking);
 
-// GET /bookings/my_bookings
-router.get("/my_bookings", verifyToken, BookingCtrl.getMyBookings);
+// GET /bookings
+router.get("/", verifyToken, BookingCtrl.getMyBookings);
 
 // PATCH /bookings/:id/cancel
 router.patch("/:id/cancel", verifyToken, BookingCtrl.cancelBooking);

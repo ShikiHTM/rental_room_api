@@ -6,5 +6,6 @@ const router: Router = Router();
 
 router.get('/', verifyToken, userCtrl.me);
 router.patch('/', verifyToken, userCtrl.update);
+router.get('/reviews', verifyToken, userCtrl.getReviews);
 
 export default router;

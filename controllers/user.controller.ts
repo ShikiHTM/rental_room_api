@@ -23,3 +23,14 @@ export const update = catchAsync(async (req: AuthRequest, res: Response) => {
 
     return res.status(200).json({ data: updatedUser });
 })
+
+export const getReviews = catchAsync(async (req: AuthRequest, res: Response) => {
+    const reviews = await db.review.findMany({
+        where: { userId: req.user.id },
+        include: {
+            images: true,
+            room: true
+        }
+    })
+    return res.status(200).json({ data: reviews });
+})
