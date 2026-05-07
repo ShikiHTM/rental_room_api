@@ -12,10 +12,17 @@ export interface IMailConfig {
     template?: string
 };
 
-export interface UserPayload {
+export interface IUserPayload {
     id: string;
     email?: string;
     role: 'USER' | 'HOST' | 'ADMIN';
     iat?: number;
     exp?: number;
+    bannedAt?: Date | null;
+    banReason?: string | null;
+    banExpiresAt?: Date | null;
 };
+
+export interface IPaymentStrategy {
+    pay: (amount: number) => Promise<void>;
+}

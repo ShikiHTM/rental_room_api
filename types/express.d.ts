@@ -1,9 +1,9 @@
-import { UserPayload } from "./types.js";
+import { IUserPayload } from "./types.js";
 
 declare global {
     namespace Express {
         interface Request {
-            user?: UserPayload;
+            user?: IUserPayload;
         }
     }
 }
