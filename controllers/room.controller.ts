@@ -4,6 +4,7 @@ import { type AuthRequest } from '../middlewares/auth.middleware.js'
 import { roomService } from "../services/room.service.js";
 import { catchAsync } from "../Utils/catchAsync.utils.js";
 import { BadRequestError, ForbiddenError, NotFoundError } from "../Utils/AppError.js";
+import { meiliService } from "../services/meilisearch.service.js";
 
 export const applyToBeHost = catchAsync(async (req: AuthRequest, res: Response) => {
     if (req.user.role !== 'USER') throw new BadRequestError('You are already a Host');
@@ -95,4 +96,21 @@ export const deleteRoom = catchAsync(async (req: AuthRequest, res: Response) => 
     return res.status(200).json({
         message: 'Room deleted successfully.'
     })
+});
+
+// GET /rooms/search?q=&city=&minPrice=&maxPrice=&maxGuests=
+export const searchRooms = catchAsync(async (req: Request, res: Response) => {
+    const { q = '', city, minPrice, maxPrice, maxGuests } = req.query;
+
+    const isAdmin = req.user?.role === 'ADMIN';
+
+    const result = await meiliService.searchRooms(q as string, {
+        ...(city && { city: city as string }),
+        ...(minPrice && { minPrice: Number(minPrice) }),
+        ...(maxPrice && { maxPrice: Number(maxPrice) }),
+        ...(maxGuests && { maxGuests: Number(maxGuests) }),
+        ...(!isAdmin && { status: 'APPROVED' }),
+    });
+
+    return res.status(200).json({ data: result.hits });
 });

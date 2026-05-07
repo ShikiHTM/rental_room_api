@@ -2,9 +2,24 @@ import db from "../Database/Utils/db.js";
 import { cloudinaryService } from "./cloudinary.service.js";
 import { CreateRoomSchema, UpdateRoomSchema, type RoomInput, type UpdateRoomInput } from "../Utils/schemas/room.schema.js";
 import { type UploadResponse } from "./cloudinary.service.js";
-import type { IUserPayload } from "../types/types.js";
+import type { IRoomDocument, IUserPayload } from "../types/types.js";
 import { removeUndefined } from "../Utils/cleanData.js";
 import { ForbiddenError, NotFoundError, ValidationError } from "../Utils/AppError.js";
+import { meiliService } from "./meilisearch.service.js";
+
+const toRoomDoc = (room: any): IRoomDocument => ({
+    id: room.id,
+    title: room.title,
+    description: room.description,
+    address: room.address,
+    city: room.city,
+    pricePerNight: Number(room.pricePerNight),
+    maxGuests: room.maxGuests,
+    status: room.status,
+    hostId: room.hostId,
+    hostName: room.host?.fullName ?? '',
+    createdAt: room.createdAt.toISOString(),
+});
 
 export class RoomService {
     public async handleRoomCreation(userId: string, body: unknown) {
@@ -23,7 +38,7 @@ export class RoomService {
         }
 
         try {
-            return await db.room.create({
+            const room = await db.room.create({
                 data: {
                     ...roomData,
                     description: roomData.description ?? null,
@@ -36,8 +51,10 @@ export class RoomService {
                         }))
                     }
                 },
-                include: { images: true }
+                include: { images: true, host: { select: { fullName: true } } }
             });
+            await meiliService.upsertRoom(toRoomDoc(room));
+            return room;
         } catch (error) {
             await Promise.allSettled(cloudinaryResults.map(img => cloudinaryService.destroy(img.public_id)));
             throw error;
@@ -94,13 +111,14 @@ export class RoomService {
             const updated = await db.room.update({
                 where: { id: roomId },
                 data: cleanData,
-                include: { images: true }
+                include: { images: true, host: { select: { fullName: true } } }
             });
 
             if (newCloudinaryResults.length > 0 && room.images.length > 0) {
                 await Promise.allSettled(room.images.map(img => cloudinaryService.destroy(img.publicId)));
             }
 
+            await meiliService.upsertRoom(toRoomDoc(updated));
             return updated;
         } catch (error) {
             await Promise.allSettled(newCloudinaryResults.map(img => cloudinaryService.destroy(img.public_id)));
@@ -129,7 +147,9 @@ export class RoomService {
             (images || []).map((img) => cloudinaryService.destroy(img.publicId))
         )
 
-        return await db.room.delete({ where: { id: roomId } });
+        const deleted = await db.room.delete({ where: { id: roomId } });
+        await meiliService.deleteRoom(roomId);
+        return deleted;
     }
 }
 

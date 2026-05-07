@@ -1,13 +1,13 @@
 import { Router } from "express";
 import * as roomCrtl from '../controllers/room.controller.js'
 import { checkBanned, verifyToken } from "../middlewares/auth.middleware.js";
-import * as role from "../middlewares/role.middleware.js";
 
 const router: Router = Router();
 
 // Public Routes
 
 router.get('/', roomCrtl.getRooms);
+router.get('/search', roomCrtl.searchRooms);
 router.get('/:id', roomCrtl.getRoom);
 
 // Protected Routes
