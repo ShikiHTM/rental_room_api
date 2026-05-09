@@ -9,6 +9,7 @@ async function testSend() {
 
         const queue = 'email_queue';
         const msg: IMailConfig = {
+            from: 'test@example.com',
             to: 'kizukusan123@gmail.com',
             subject: 'Hello from RabbitMQ',
             text: 'Testing texts'

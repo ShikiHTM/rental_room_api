@@ -60,9 +60,9 @@ const MyBookings = () => {
   };
 
   const submitReview = async () => {
-    if (!reviewBooking || !reviewBooking.room?.id) return;
+    if (!reviewBooking || !reviewBooking.id) return;
     try {
-      await reviewService.createReview(reviewBooking.room.id, {
+      await reviewService.createReview(reviewBooking.id, {
         rating: reviewData.rating,
         comment: reviewData.comment,
         images: reviewData.images.filter(img => img.trim() !== '')

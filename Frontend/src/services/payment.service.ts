@@ -8,9 +8,9 @@ export interface PaymentData {
 
 export const paymentService = {
   processPayment: async (paymentData: PaymentData): Promise<any> => {
-    // In the future: POST /api/payments
+    // In the future: POST /payments
     try {
-      const response = await api.post('/api/payments', paymentData);
+      const response = await api.post('/payments', paymentData);
       return response.data;
     } catch (error) {
       console.warn("Mocking processPayment");

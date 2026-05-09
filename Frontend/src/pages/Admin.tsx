@@ -46,14 +46,23 @@ const Admin = () => {
     }
   };
 
-  const handleUpdateUserRole = async (userId: string, newRole: 'USER' | 'HOST' | 'ADMIN') => {
+  const handleBanUser = async (userId: string) => {
     try {
-      await adminService.updateUserRole(userId, newRole);
-      toast.success(`User role updated to ${newRole}`);
-      // Optimistically update UI
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+      await adminService.banUser(userId);
+      toast.success(`User has been banned.`);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, bannedAt: new Date().toISOString() } : u));
     } catch (error) {
-      toast.error('Failed to update user role');
+      toast.error('Failed to ban user');
+    }
+  };
+
+  const handleUnbanUser = async (userId: string) => {
+    try {
+      await adminService.unbanUser(userId);
+      toast.success(`User has been unbanned.`);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, bannedAt: null } : u));
+    } catch (error) {
+      toast.error('Failed to unban user');
     }
   };
 
@@ -108,7 +117,7 @@ const Admin = () => {
                       <th>Name</th>
                       <th>Email</th>
                       <th>Current Role</th>
-                      <th>Actions (Change Role)</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -123,19 +132,13 @@ const Admin = () => {
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            {u.role !== 'USER' && (
-                              <button className="btn-text" onClick={() => handleUpdateUserRole(u.id, 'USER')}>
-                                Make USER
+                            {u.bannedAt ? (
+                              <button className="btn-text" style={{ color: 'var(--success)' }} onClick={() => handleUnbanUser(u.id)}>
+                                Unban
                               </button>
-                            )}
-                            {u.role !== 'HOST' && (
-                              <button className="btn-text" style={{ color: 'var(--primary)' }} onClick={() => handleUpdateUserRole(u.id, 'HOST')}>
-                                Make HOST
-                              </button>
-                            )}
-                            {u.role !== 'ADMIN' && (
-                              <button className="btn-text" style={{ color: 'var(--danger)' }} onClick={() => handleUpdateUserRole(u.id, 'ADMIN')}>
-                                Make ADMIN
+                            ) : (
+                              <button className="btn-text" style={{ color: 'var(--danger)' }} onClick={() => handleBanUser(u.id)}>
+                                Ban User
                               </button>
                             )}
                           </div>

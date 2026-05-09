@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Mail, Phone, Shield, Calendar } from 'lucide-react';
+import { Mail, Phone, Shield } from 'lucide-react';
 import './Profile.css';
 
 const Profile = () => {

@@ -79,7 +79,7 @@ const RoomDetail = () => {
     const outDate = new Date(checkOut);
     const diffTime = Math.abs(outDate.getTime() - inDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const totalPrice = diffDays * room.pricePerNight;
+
 
     if (diffDays <= 0) {
       setBookingStatus({ loading: false, error: 'Checkout date must be after Checkin date', success: false });

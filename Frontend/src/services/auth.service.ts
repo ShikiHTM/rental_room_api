@@ -6,6 +6,7 @@ export interface User {
   fullName: string;
   role: 'USER' | 'HOST' | 'ADMIN';
   phoneNumber?: string;
+  bannedAt?: string | null;
 }
 
 interface LoginResponse {
@@ -15,17 +16,17 @@ interface LoginResponse {
 
 export const authService = {
   login: async (email: string, password: string): Promise<LoginResponse> => {
-    const response = await api.post<LoginResponse>('/api/auth/login', { email, password });
+    const response = await api.post<LoginResponse>('/auth/login', { email, password });
     return response.data;
   },
 
   register: async (email: string, password: string, fullName: string, phoneNumber?: string) => {
-    const response = await api.post('/api/auth/register', { email, password, fullName, phoneNumber });
+    const response = await api.post('/auth/register', { email, password, fullName, phoneNumber });
     return response.data;
   },
 
   getMe: async (): Promise<User> => {
-    const response = await api.get<{ data: User }>('/api/auth/me');
+    const response = await api.get<{ data: User }>('/users');
     return response.data.data;
   },
 
@@ -34,12 +35,12 @@ export const authService = {
   },
 
   forgotPassword: async (email: string) => {
-    const response = await api.post('/api/auth/forgot-password', { email });
+    const response = await api.post('/auth/forgot-password', { email });
     return response.data;
   },
 
   resetPassword: async (token: string, password: string) => {
-    const response = await api.post('/api/auth/reset-password', { token, password });
+    const response = await api.post('/auth/reset-password', { token, password });
     return response.data;
   }
 };
