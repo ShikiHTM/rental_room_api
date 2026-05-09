@@ -1,32 +1,32 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
-import authRoutes from './routes/auth.routes.js'
-import roomRoutes from './routes/room.routes.js'
-import bookingRoutes from './routes/booking.routes.js'
+import swaggerUi from 'swagger-ui-express';
+import v1Router from './routes/v1.routes.js';
 import { errorMiddleware } from './middlewares/error.middleware.js';
 import { serverConfig } from './config/server.config.js';
 import { logger } from './services/logger.service.js';
 import MailWorker from './services/email.service.js';
-import { verifyEmail } from './controllers/auth.controller.js';
 import cookieParser from 'cookie-parser';
 import { authConfig } from './config/auth.config.js';
+import { startCancelExpiredBookingsJob } from './jobs/cancelExpiredBookings.js';
+import { swaggerSpec } from './config/swagger.config.js';
+import { meiliService } from './services/meilisearch.service.js';
 
 export const app: Express = express();
 
 MailWorker.instance;
+startCancelExpiredBookingsJob();
+meiliService.setup();
 
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: serverConfig.frontendUrl,
     credentials: true
 }));
 app.use(express.json());
-app.use(cookieParser(authConfig.JWTSecret))
+app.use(cookieParser(authConfig.JWTSecret));
 
-app.use('/verify', verifyEmail);
-
-app.use('/api/auth', authRoutes);
-app.use('/api/room', roomRoutes);
-app.use('/api/bookings', bookingRoutes);
+app.use('/api/v1', v1Router);
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use(errorMiddleware);
 

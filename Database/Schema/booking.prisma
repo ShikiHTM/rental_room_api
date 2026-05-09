@@ -16,10 +16,12 @@ model Booking {
 
     // User booking
     userId String
-    user    User    @relation(fields: [userId], references: [id])
+    user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     roomId  String
-    room    Room    @relation(fields: [roomId], references: [id])
+    room    Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
     payments Payment[]
+
+    review  Review?
 }

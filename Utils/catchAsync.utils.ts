@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 
-type AsyncController = (req: any, res: Response, next: NextFunction) => Promise<any>;
+type AsyncController = (req: any, res: Response, next: NextFunction) => Promise<Response | void>;
 
 const catchAsync = (fn: AsyncController) => {
     return (req: Request, res: Response, next: NextFunction) => {

@@ -30,5 +30,20 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    container_name: meilisearch_service
+    restart: always
+
+    ports:
+      - '7700:7700'
+
+    environment:
+      - MEILI_MASTER_KEY=${MEILISEARCH_API_KEY}
+
+    volumes:
+      - meilisearch_data:/meili_data
+
 volumes:
   rabbitmq_data:
+  meilisearch_data:

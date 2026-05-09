@@ -13,12 +13,18 @@ model User {
     fullName    String
     phoneNumber  String?
     role    ROLE    @default(USER)
+
+    bannedAt   DateTime?
+    banExpiresAt DateTime?
+    banReason  String?
+
     createdAt    DateTime    @default(now())
     updatedAt   DateTime    @updatedAt
+
+    passwordResetToken  PasswordResetToken[]
 
     rooms   Room[]
     bookings    Booking[]
 
     reviews     Review[]
-    payments    Payment[]
 }

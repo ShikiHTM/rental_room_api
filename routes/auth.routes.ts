@@ -1,7 +1,5 @@
 import { Router } from "express";
 import * as auth from '../controllers/auth.controller.js'
-import { verifyToken } from '../middlewares/auth.middleware.js'
-import type { Request, Response } from 'express'
 import rateLimit from "express-rate-limit";
 
 const router: Router = Router();
@@ -17,13 +15,16 @@ router.post('/register', auth.register);
 // POST /auth/login
 router.post('/login', auth.login);
 
-// GET /auth/me
-router.get('/me', verifyToken, auth.getMe);
+// GET /auth/verify?token=...
+router.get('/verify', auth.verifyEmail);
 
 // POST /auth/forgot-password
-router.post('/forgot-password', rateLimiter, auth.sendResetLinkEmail)
+router.post('/forgot-password', rateLimiter, auth.forgotPassword)
 
 // POST /auth/reset-password
-router.post('/reset-password', auth.reset)
+router.post('/reset-password', auth.resetPassword)
+
+// POST /auth/logout
+router.post('/logout', auth.logout)
 
 export default router;
