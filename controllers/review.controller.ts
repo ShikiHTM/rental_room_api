@@ -22,7 +22,7 @@ export const store = catchAsync(async (req: AuthRequest, res: Response) => {
 })
 
 export const index = catchAsync(async (req: Request, res: Response) => {
-    const { roomId } = req.body;   
+    const { roomId } = req.params as { roomId: string };   
 
     const reviews = await db.review.findMany({
         where: {roomId},
