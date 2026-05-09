@@ -7,6 +7,93 @@ import { type Room } from '../services/room.service';
 import toast from 'react-hot-toast';
 import './Admin.css';
 
+const UserRow = ({ user }: { user: User }) => {
+  const [bannedAt, setBannedAt] = useState<string | null | undefined>(user.bannedAt);
+
+  const handleBan = async () => {
+    try {
+      const updatedUser = await adminService.banUser(user.id);
+      setBannedAt(updatedUser?.bannedAt || new Date().toISOString());
+    } catch (error) {
+      // Error handled in service
+    }
+  };
+
+  const handleUnban = async () => {
+    try {
+      await adminService.unbanUser(user.id);
+      setBannedAt(null);
+    } catch (error) {
+      // Error handled in service
+    }
+  };
+
+  return (
+    <tr>
+      <td><strong>{user.fullName}</strong></td>
+      <td>{user.email}</td>
+      <td>
+        <span className={`status-badge status-${user.role?.toLowerCase() || 'user'}`}>
+          {user.role || 'USER'}
+        </span>
+      </td>
+      <td>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {bannedAt ? (
+            <button className="btn-text" style={{ color: 'var(--success)' }} onClick={handleUnban}>
+              Unban
+            </button>
+          ) : (
+            <button className="btn-text" style={{ color: 'var(--danger)' }} onClick={handleBan}>
+              Ban User
+            </button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+};
+
+const RoomRow = ({ room }: { room: Room }) => {
+  const [status, setStatus] = useState<string>(room.status || 'PENDING');
+
+  const handleUpdateAction = async (action: 'APPROVE' | 'REJECT') => {
+    try {
+      await adminService.updateRoomStatus(room.id, action);
+      setStatus(action === 'APPROVE' ? 'APPROVED' : 'REJECTED');
+    } catch (error) {
+      // Error handled in service
+    }
+  };
+
+  return (
+    <tr>
+      <td><strong>{room.title}</strong></td>
+      <td>{room.hostId || (room.host?.email)}</td>
+      <td>{room.address}, {room.city}</td>
+      <td>
+        <span className={`status-badge status-${status.toLowerCase()}`}>
+          {status}
+        </span>
+      </td>
+      <td>
+        {status === 'PENDING' ? (
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn-text" style={{ color: 'var(--success)' }} onClick={() => handleUpdateAction('APPROVE')}>
+              Approve
+            </button>
+            <button className="btn-text" style={{ color: 'var(--danger)' }} onClick={() => handleUpdateAction('REJECT')}>
+              Reject
+            </button>
+          </div>
+        ) : (
+          <span style={{ color: 'var(--text-secondary)' }}>No actions needed</span>
+        )}
+      </td>
+    </tr>
+  );
+};
+
 const Admin = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -43,37 +130,6 @@ const Admin = () => {
       toast.error('Failed to load admin dashboard data');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleBanUser = async (userId: string) => {
-    try {
-      await adminService.banUser(userId);
-      toast.success(`User has been banned.`);
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, bannedAt: new Date().toISOString() } : u));
-    } catch (error) {
-      toast.error('Failed to ban user');
-    }
-  };
-
-  const handleUnbanUser = async (userId: string) => {
-    try {
-      await adminService.unbanUser(userId);
-      toast.success(`User has been unbanned.`);
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, bannedAt: null } : u));
-    } catch (error) {
-      toast.error('Failed to unban user');
-    }
-  };
-
-  const handleUpdateRoomStatus = async (roomId: string, status: 'APPROVED' | 'REJECTED') => {
-    try {
-      await adminService.updateRoomStatus(roomId, status);
-      toast.success(`Room ${status.toLowerCase()} successfully`);
-      // Optimistically update UI
-      setRooms(prev => prev.map(r => r.id === roomId ? { ...r, status: status as any } : r));
-    } catch (error) {
-      toast.error(`Failed to update room status to ${status}`);
     }
   };
 
@@ -122,28 +178,7 @@ const Admin = () => {
                   </thead>
                   <tbody>
                     {users.map(u => (
-                      <tr key={u.id}>
-                        <td><strong>{u.fullName}</strong></td>
-                        <td>{u.email}</td>
-                        <td>
-                          <span className={`status-badge status-${u.role?.toLowerCase() || 'user'}`}>
-                            {u.role || 'USER'}
-                          </span>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            {u.bannedAt ? (
-                              <button className="btn-text" style={{ color: 'var(--success)' }} onClick={() => handleUnbanUser(u.id)}>
-                                Unban
-                              </button>
-                            ) : (
-                              <button className="btn-text" style={{ color: 'var(--danger)' }} onClick={() => handleBanUser(u.id)}>
-                                Ban User
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+                      <UserRow key={u.id} user={u} />
                     ))}
                   </tbody>
                 </table>
@@ -169,30 +204,7 @@ const Admin = () => {
                   </thead>
                   <tbody>
                     {rooms.map(room => (
-                      <tr key={room.id}>
-                        <td><strong>{room.title}</strong></td>
-                        <td>{room.hostId || (room.host?.email)}</td>
-                        <td>{room.address}, {room.city}</td>
-                        <td>
-                          <span className={`status-badge status-${room.status?.toLowerCase() || 'pending'}`}>
-                            {room.status || 'PENDING'}
-                          </span>
-                        </td>
-                        <td>
-                          {room.status === 'PENDING' ? (
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <button className="btn-text" style={{ color: 'var(--success)' }} onClick={() => handleUpdateRoomStatus(room.id, 'APPROVED')}>
-                                Approve
-                              </button>
-                              <button className="btn-text" style={{ color: 'var(--danger)' }} onClick={() => handleUpdateRoomStatus(room.id, 'REJECTED')}>
-                                Reject
-                              </button>
-                            </div>
-                          ) : (
-                            <span style={{ color: 'var(--text-secondary)' }}>No actions needed</span>
-                          )}
-                        </td>
-                      </tr>
+                      <RoomRow key={room.id} room={room} />
                     ))}
                   </tbody>
                 </table>

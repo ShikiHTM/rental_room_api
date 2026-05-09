@@ -60,7 +60,7 @@ const MyBookings = () => {
   };
 
   const submitReview = async () => {
-    if (!reviewBooking || !reviewBooking.id) return;
+    if (!reviewBooking) return;
     try {
       await reviewService.createReview(reviewBooking.id, {
         rating: reviewData.rating,
