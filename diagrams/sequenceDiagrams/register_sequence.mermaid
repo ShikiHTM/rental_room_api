@@ -1,0 +1,35 @@
+sequenceDiagram
+    actor Guest
+    participant fe@{ "type": "boundary" } as Frontend
+    participant API@{ "type": "control" } as API
+    participant db@{ "type": "database" } as Database
+    participant HP as HomePage
+
+    Guest->>+fe: Register (name, email, password)
+    fe->>+API: POST /api/register
+    API->>API: Validate input format (Zod) 
+
+    alt Validation failed (Format)
+        API-->>fe: 400 Bad Request
+        fe-->>Guest: Show validation errors
+    else Format valid
+        API->>+db: Find user by email
+        db-->>-API: Result (exists / null)
+
+        alt Email already exists
+            API-->>fe: 409 Conflict
+            fe-->>Guest: Show error "Email already in use"
+        else Email is unique
+            API->>API: bcrypt.hash(password, saltRounds)
+            API->>+db: Insert new User
+            db-->>-API: User object created
+            API->>API: jwt.sign(payload, secret)
+            API->>API: res.cookie('token', token, { httpOnly: true })
+            API-->>fe: 201 Created (user_data) + Set-Cookie Header
+            fe->>HP: Redirect to HomePage
+            HP-->>Guest: HomePage
+        end
+    end
+
+    deactivate API
+    deactivate fe

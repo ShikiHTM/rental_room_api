@@ -1,0 +1,39 @@
+sequenceDiagram
+    actor Guest
+    participant fe@{ "type": "boundary" } as Frontend
+    participant API@{ "type": "control" } as Api
+    participant db@{ "type": "database" } as User Database
+    participant HP as HomePage
+
+    Guest->>+fe: Login
+    fe->>+API: Send login details
+    API->>API: Validate inputs
+
+    alt Validation failed
+        API-->>fe: 400 Bad Request (error message)
+        fe-->>Guest: Show validation errors
+    else Validation passed
+        API->>+db: Find user by email
+        db-->>-API: User object (including password hash) or null
+
+        alt User not found
+            API-->>fe: 401 Unauthorized
+            fe-->>Guest: Show error "Wrong email or password"
+
+        else User exists
+            API->>API: bcrypt.compare(password, user.password)
+
+            alt Password mismatch
+                API-->>fe: 401 Unauthorized
+                fe-->>Guest: Show error "Wrong email or password"
+            else Password matches
+                API->>API: Generate JWT Token
+                API->>API: Attach Token to HttpOnly Cookie
+                API-->>fe: 200 OK (user_data) + Set-Cookie Header
+                fe->>HP: Redirect to HomePage
+                HP-->>Guest: HomePage
+            end
+        end
+    end
+    deactivate fe
+    deactivate API
