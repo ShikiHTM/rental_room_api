@@ -1,0 +1,42 @@
+---
+title: Quolifa
+---
+
+classDiagram
+    class User {
+        -String id
+        -String email
+        -String password
+        -String verifyToken
+        -DateTime verifiedAt
+        +String fullName
+        +String phoneNumber
+        +ROLE role
+        -DateTime bannedAt
+        -DateTime banExpiresAt
+        -String banReason
+        +DateTime createdAt
+        +DateTime updatedAt
+        +register(email, password, fullName) User
+        +verifyEmail(token) void
+        +login(email, password) Token
+        +logout() void
+        +requestPasswordReset(email) void
+        +resetPassword(token, newPassword) void
+        +updateProfile(data) User
+        +changePassword(old, new) void
+        +applyToBeHost() void
+        +bookRoom(roomId, dates) Booking
+        +cancelBooking(bookingId) void
+        +writeReview(bookingId, rating, comment) Review
+        +isBanned() Boolean
+        +hasRole(role) Boolean
+    }
+
+    class ROLE {
+        <<enumeration>>
+        USER
+        HOST
+        ADMIN
+    }
+

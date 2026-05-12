@@ -1,0 +1,86 @@
+sequenceDiagram
+    actor User
+    participant fe@{ "type": "boundary" } as Frontend
+    participant API@{ "type": "control" } as API
+    participant db@{ "type": "database" } as Database
+    participant ms@{ "type": "control" } as Meilisearch
+    participant ps@{ "type": "control" } as PaymentService
+    participant pg@{ "type": "boundary" } as Payment Gateway
+
+    Note over User,pg: Phase 1 — Create booking (status = PENDING)
+
+    User->>+fe: Select room + check-in/check-out, click "Book"
+    fe->>+API: POST /api/bookings (roomId, checkIn, checkOut)
+    API->>API: Auth middleware (JWT + checkBanned)
+    API->>API: Validate body (CreateBookingSchema)
+
+    alt Validation failed
+        API-->>fe: 400 Bad Request
+        fe-->>User: Show validation errors
+    else Validation passed
+        API->>+db: Find room by id
+        db-->>-API: Room or null
+
+        alt Room not found or status != APPROVED
+            API-->>fe: 400 / 404
+            fe-->>User: "Room not available"
+        else Room is APPROVED
+            API->>+db: Find overlapping CONFIRMED/PENDING booking
+            db-->>-API: Overlapping booking or null
+
+            alt Dates overlap existing booking
+                API-->>fe: 400 Bad Request
+                fe-->>User: "Room already booked for these dates"
+            else Dates free
+                API->>API: totalPrice = nights * room.pricePerNight
+                API->>+db: Create booking (status=PENDING)
+                db-->>-API: Booking
+                API->>+ms: upsertBooking(bookingDoc)
+                ms-->>-API: Indexed
+                API-->>fe: 201 Created (booking)
+                fe-->>User: Show payment method options
+            end
+        end
+    end
+
+    Note over User,pg: Phase 2 — Pay (Strategy: Online / Bank Transfer / Cash)
+
+    User->>+fe: Choose payment method
+    fe->>+API: POST /api/bookings/:id/pay (method)
+    API->>API: Verify booking belongs to user & status=PENDING
+    API->>+ps: pay(amount, strategy)
+
+    alt Pay Online
+        ps->>+pg: Create checkout session (amount, bookingId)
+        pg-->>-ps: checkoutUrl
+        ps-->>-API: { checkoutUrl }
+        API-->>fe: 200 (checkoutUrl)
+        fe->>pg: Redirect to gateway
+        User->>pg: Enter card / wallet details
+        pg-->>API: Webhook POST /api/payments/webhook (SUCCESS)
+        API->>+db: Update booking (paid=true) + payment record
+        db-->>-API: Updated
+        API->>+ms: upsertBooking
+        ms-->>-API: Indexed
+        API-->>fe: Confirmed (poll / SSE)
+        fe-->>User: "Payment successful — awaiting host approval"
+
+    else Pay via Bank Transfer
+        ps->>+db: Create payment record (method=BANK, status=PENDING_REVIEW)
+        db-->>-ps: Saved
+        ps-->>API: Bank account info
+        API-->>fe: 200 (bank details, reference code)
+        fe-->>User: Show bank details + upload receipt prompt
+
+    else Pay via Cash
+        ps->>+db: Create payment record (method=CASH, status=PAY_ON_ARRIVAL)
+        db-->>-ps: Saved
+        ps-->>API: OK
+        API-->>fe: 200 OK
+        fe-->>User: "Pay on arrival — booking awaits host approval"
+    end
+
+    Note over API,db: Background — if host does not accept within 24h,<br/>cancelExpiredBookings job sets status = CANCELLED<br/>(and refunds online payments)
+
+    deactivate API
+    deactivate fe

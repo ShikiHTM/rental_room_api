@@ -1,0 +1,30 @@
+sequenceDiagram
+    actor User as Guest / Admin
+    participant fe@{ "type": "boundary" } as Frontend
+    participant API@{ "type": "control" } as API
+    participant ms@{ "type": "control" } as Meilisearch
+
+    Note over User,ms: Public room search with filters
+
+    User->>+fe: Enter query "beach" + filters (city, price, guests)
+    fe->>+API: GET /room/search?q=beach&city=...&minPrice=...&maxPrice=...&maxGuests=...
+    API->>API: Read req.user (optional — public route)
+    API->>API: isAdmin = req.user?.role === 'ADMIN'
+
+    API->>API: Build filter object<br/>{ city?, minPrice?, maxPrice?, maxGuests?,<br/> + (status='APPROVED' unless admin) }
+
+    API->>+ms: searchRooms(q, filters)
+    ms->>ms: Compose filter string:<br/>city = "..." AND pricePerNight >= ...<br/>AND pricePerNight <= ... AND maxGuests >= ...<br/>AND status = "APPROVED"
+    ms->>ms: index('rooms').search(q, { filter, sort:[createdAt:desc] })
+
+    alt Meilisearch error
+        ms-->>API: Error (logged)
+        API-->>fe: 500 or empty
+        fe-->>User: Show "Search unavailable"
+    else Search ok
+        ms-->>-API: { hits: [...rooms] }
+        API-->>-fe: 200 { data: hits }
+        fe-->>-User: Render room cards
+    end
+
+    Note over User,ms: Admins see PENDING/REJECTED rooms in search too —<br/>guests only see APPROVED.

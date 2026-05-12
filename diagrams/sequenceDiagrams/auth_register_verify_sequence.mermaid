@@ -1,0 +1,63 @@
+sequenceDiagram
+    actor User
+    participant fe@{ "type": "boundary" } as Frontend
+    participant API@{ "type": "control" } as API
+    participant db@{ "type": "database" } as Database
+    participant mq@{ "type": "queue" } as RabbitMQ (email_queue_task)
+    participant mw@{ "type": "control" } as MailWorker
+    participant smtp@{ "type": "boundary" } as SMTP Server
+
+    Note over User,smtp: Phase 1 — Register
+
+    User->>+fe: Fill register form (email, password, fullName, phone)
+    fe->>+API: POST /auth/register
+    API->>API: Validate body (CreateUserSchema)
+
+    alt Validation failed
+        API-->>fe: 400 Bad Request (issues)
+        fe-->>User: Show field errors
+    else Validation passed
+        API->>+db: findUnique(user by email)
+        db-->>-API: existingUser or null
+
+        alt Email already used
+            API-->>fe: 400 "Email has been used."
+            fe-->>User: Show error
+        else Email is new
+            API->>API: bcrypt.hash(password, 10)
+            API->>API: Generate mailRandomToken<br/>+ sha256(hashedVerifyToken)
+            API->>+db: user.create(verifyToken = hashed)
+            db-->>-API: newUser
+            API->>API: jwt.sign({id, role, email})
+            API->>+mq: sendToEmailQueue(verify mail with raw token link)
+            mq-->>-API: Enqueued
+            API-->>fe: 201 + Set-Cookie token (httpOnly, signed)
+            fe-->>User: "Register successfully — check inbox"
+        end
+    end
+
+    Note over mw,smtp: Phase 2 — Worker delivers verification email (async)
+
+    mw->>+mq: consume(email_queue_task)
+    mq-->>-mw: message {to, subject, html}
+    mw->>+smtp: transporter.sendMail(config)
+    smtp-->>-mw: 250 OK
+    mw->>mq: ack(msg)
+
+    Note over User,db: Phase 3 — User clicks verification link
+
+    User->>+fe: Click /verify?token=<raw>
+    fe->>+API: GET /auth/verify?token=...
+    API->>API: hashedToken = sha256(token)
+    API->>+db: findFirst(user where verifyToken = hashedToken)
+    db-->>-API: user or null
+
+    alt Token invalid / already used
+        API-->>fe: 400 "Invalid or expired token."
+        fe-->>User: Show error
+    else Token valid
+        API->>+db: user.update(verifiedAt = now, verifyToken = null)
+        db-->>-API: Updated
+        API-->>fe: 200 "Account is verified"
+        fe-->>-User: Redirect to login / home
+    end

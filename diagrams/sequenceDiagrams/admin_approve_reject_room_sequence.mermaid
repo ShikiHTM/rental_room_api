@@ -1,0 +1,60 @@
+sequenceDiagram
+    actor Admin
+    participant fe@{ "type": "boundary" } as Admin Panel
+    participant API@{ "type": "control" } as API
+    participant db@{ "type": "database" } as Database
+    participant ms@{ "type": "control" } as Meilisearch
+
+    Note over Admin,ms: Approve OR Reject a PENDING room
+
+    Admin->>+fe: Open pending room list
+    fe->>+API: GET /admin/rooms
+    API->>API: verifyToken + isAdmin
+    API->>+db: room.findMany()
+    db-->>-API: All rooms (any status)
+    API-->>-fe: 200 data
+    fe-->>-Admin: Show rooms with status badges
+
+    Admin->>+fe: Click "Approve" or "Reject" on a room
+    alt Approve flow
+        fe->>+API: PATCH /admin/rooms/:roomId/approve
+        API->>API: verifyToken + isAdmin
+        API->>+db: room.findUnique(id, include host)
+        db-->>-API: room or null
+
+        alt Room missing
+            API-->>fe: 404 "Room not found."
+            fe-->>Admin: Show error
+        else Room exists
+            API->>API: Build updateTasks = [room.update(status=APPROVED)]
+            alt Host still has role=USER
+                API->>API: Append user.update(role = 'HOST')
+            end
+            API->>+db: $transaction(updateTasks)
+            db-->>-API: All updates committed
+            API->>+ms: upsertRoom(room with status=APPROVED)
+            ms-->>-API: Indexed (now searchable publicly)
+            API-->>fe: 200 "Room approved"
+            fe-->>Admin: Refresh list
+        end
+
+    else Reject flow
+        fe->>+API: PATCH /admin/rooms/:roomId/reject
+        API->>API: verifyToken + isAdmin
+        API->>+db: room.findUnique(id, include host)
+        db-->>-API: room or null
+
+        alt Room missing
+            API-->>fe: 404 "Room not found."
+            fe-->>Admin: Show error
+        else Room exists
+            API->>+db: room.update(status=REJECTED)
+            db-->>-API: Updated
+            API->>+ms: upsertRoom(room with status=REJECTED)
+            ms-->>-API: Re-indexed (filtered out of public search)
+            API-->>fe: 200 "Room rejected."
+            fe-->>Admin: Refresh list
+        end
+    end
+
+    Note over Admin,ms: Note: rejecting does NOT demote a HOST back to USER.<br/>Promotion happens only on first-approval transition.

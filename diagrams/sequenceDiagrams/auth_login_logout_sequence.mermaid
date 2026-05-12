@@ -1,0 +1,42 @@
+sequenceDiagram
+    actor User
+    participant fe@{ "type": "boundary" } as Frontend
+    participant API@{ "type": "control" } as API
+    participant db@{ "type": "database" } as Database
+
+    Note over User,db: Login
+
+    User->>+fe: Enter email + password
+    fe->>+API: POST /auth/login
+    API->>API: Validate body (LoginUserSchema)
+
+    alt Missing fields
+        API-->>fe: 400 "Missing or empty required fields"
+        fe-->>User: Show error
+    else Valid input
+        API->>+db: findUnique(user by email)
+        db-->>-API: user or null
+
+        alt User not found
+            API-->>fe: 400 "Invalid username or password."
+            fe-->>User: Show generic error
+        else User found
+            API->>API: bcrypt.compare(password, user.password)
+
+            alt Password mismatch
+                API-->>fe: 400 "Invalid username or password."
+                fe-->>User: Show generic error
+            else Password ok
+                API->>API: jwt.sign({id, role}) — 7d expiry
+                API-->>fe: 200 + Set-Cookie token<br/>(httpOnly, signed, sameSite=strict)
+                fe-->>User: Store session, redirect to dashboard
+            end
+        end
+    end
+
+    Note over User,API: Logout
+
+    User->>fe: Click "Logout"
+    fe->>+API: POST /auth/logout
+    API-->>-fe: 200 + Clear-Cookie token
+    fe-->>User: Redirect to landing page

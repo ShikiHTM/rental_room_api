@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant cron@{ "type": "control" } as node-cron Scheduler
+    participant job@{ "type": "control" } as cancelExpiredBookings Job
+    participant db@{ "type": "database" } as Database
+    participant log@{ "type": "control" } as Logger
+
+    Note over cron,log: Runs every 15 minutes (cron: */15 * * * *)<br/>Started at app boot via startCancelExpiredBookingsJob()
+
+    loop Every 15 minutes
+        cron->>+job: Tick
+
+        job->>job: deadline = now - 24h<br/>(PAYMENT_DEADLINE_HOURS)
+
+        job->>+db: booking.updateMany(<br/>where status=PENDING AND createdAt < deadline,<br/>data: status = CANCELLED)
+        db-->>-job: { count }
+
+        alt count > 0
+            job->>log: info("Auto-cancelled <count> expired booking(s)")
+        else count === 0
+            job->>job: silent (no log)
+        end
+
+        job-->>-cron: done
+    end
+
+    Note over cron,log: Side effects NOT done here (could be future work):<br/>• Re-index cancelled bookings into Meilisearch<br/>• Issue refunds for online payments<br/>• Notify the guest of the auto-cancellation

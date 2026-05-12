@@ -1,0 +1,46 @@
+sequenceDiagram
+    actor Staff as Host / Admin
+    participant fe@{ "type": "boundary" } as Frontend
+    participant API@{ "type": "control" } as API
+    participant db@{ "type": "database" } as Database
+    participant ms@{ "type": "control" } as Meilisearch
+
+    Note over Staff,ms: Host accepts/declines/completes a booking,<br/>or Admin overrides status
+
+    Staff->>+fe: Open booking → choose new status<br/>(CONFIRMED / CANCELLED / COMPLETED)
+    fe->>+API: PATCH /bookings/:id/status  { status }<br/>(host route or /admin/bookings/:id/status)
+    API->>API: verifyToken + checkBanned (+ isAdmin if admin route)
+
+    API->>API: Validate status ∈ {PENDING, CONFIRMED, CANCELLED, COMPLETED}
+    alt Invalid status
+        API-->>fe: 400 "Invalid status."
+        fe-->>Staff: Show error
+    else Valid status
+        API->>API: Check role ∈ {ADMIN, HOST}
+        alt Not host/admin
+            API-->>fe: 403 "You're not allowed to do this action"
+            fe-->>Staff: Show error
+        else Authorized role
+            API->>+db: booking.findUnique(id, include room)
+            db-->>-API: booking or null
+
+            alt Booking missing
+                API-->>fe: 404 "Booking not found."
+                fe-->>Staff: Show error
+            else Booking found
+                alt Role=HOST and room.hostId !== user.id
+                    API-->>fe: 403 "You're not allowed to do this action"
+                    fe-->>Staff: Show error
+                else Ownership confirmed (or admin)
+                    API->>+db: booking.update(status, include user+room)
+                    db-->>-API: updated booking
+                    API->>+ms: upsertBooking(toBookingDoc(updated))
+                    ms-->>-API: Re-indexed
+                    API-->>fe: 200 "Booking <status> successfully"
+                    fe-->>-Staff: Refresh dashboard
+                end
+            end
+        end
+    end
+
+    Note over Staff,ms: Typical transitions —<br/>PENDING → CONFIRMED (host accepts after payment)<br/>PENDING → CANCELLED (host declines)<br/>CONFIRMED → COMPLETED (after stay)<br/>Any → CANCELLED (admin intervention)

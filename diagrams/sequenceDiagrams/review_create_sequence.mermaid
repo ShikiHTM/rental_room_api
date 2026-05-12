@@ -1,0 +1,58 @@
+sequenceDiagram
+    actor User as Guest
+    participant fe@{ "type": "boundary" } as Frontend
+    participant API@{ "type": "control" } as API
+    participant svc@{ "type": "control" } as ReviewService
+    participant cld@{ "type": "boundary" } as Cloudinary
+    participant db@{ "type": "database" } as Database
+
+    Note over User,db: Submit a review after a COMPLETED booking
+
+    User->>+fe: Open completed booking → "Leave review"
+    fe->>+API: POST /review (bookingId, roomId, rating, comment, images[])
+    API->>API: verifyToken + checkBanned
+    API->>API: Validate body (CreateReviewSchema)
+
+    alt Validation failed
+        API-->>fe: 400 ValidationError
+        fe-->>User: Show field errors
+    else Validation passed
+        API->>+db: booking.findUnique(id = bookingId)
+        db-->>-API: booking or null
+
+        alt Booking not COMPLETED (or not found)
+            API-->>fe: 403 "You can only review after finish your booking"
+            fe-->>User: Show error
+        else Booking is COMPLETED
+            API->>+svc: handleCreateReview(userId, body)
+            svc->>+db: booking.findUnique(id) (re-check inside service)
+            db-->>-svc: booking
+
+            alt Booking missing
+                svc-->>API: NotFoundError
+            else booking.userId !== current user
+                svc-->>API: ForbiddenError "This booking does not belong to you."
+            else booking.roomId !== submitted roomId
+                svc-->>API: BadRequestError "Room does not match booking."
+            else All checks pass
+                loop For each image (parallel)
+                    svc->>+cld: upload(img)
+                    cld-->>-svc: { image_url, public_id }
+                end
+
+                svc->>+db: review.create(<br/>userId, roomId, bookingId,<br/>rating, comment, images.create=[...])
+                alt DB create failed
+                    db-->>svc: Error
+                    svc->>cld: destroy(public_id) for each uploaded image
+                    svc-->>API: Throw
+                else DB create ok
+                    db-->>-svc: review (with images)
+                    svc-->>-API: review
+                    API-->>fe: 200 "Review created successfully"
+                    fe-->>-User: Show review on room page
+                end
+            end
+        end
+    end
+
+    Note over User,db: GET /review/:roomId is public (no auth).<br/>PUT/DELETE /review/:reviewId require owner or ADMIN.

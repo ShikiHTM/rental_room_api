@@ -1,0 +1,206 @@
+---
+config:
+  layout: elk
+---
+classDiagram
+    direction LR
+
+    %% ============== ENUMERATIONS ==============
+    class ROLE {
+        <<enumeration>>
+        USER
+        HOST
+        ADMIN
+    }
+
+    class FaultFindingStatus {
+        <<enumeration>>
+        PENDING
+        APPROVED
+        REJECTED
+    }
+
+    class BookingStatus {
+        <<enumeration>>
+        PENDING
+        CONFIRMED
+        CANCELLED
+        COMPLETED
+    }
+
+    class PaymentMethod {
+        <<enumeration>>
+        CASH
+        BANK_TRANSFER
+        ONLINE
+    }
+
+    class PaymentStatus {
+        <<enumeration>>
+        PENDING
+        COMPLETED
+        FAILED
+        CANCELLED
+    }
+
+    %% ============== USER ==============
+    class User {
+        -String id
+        -String email
+        -String password
+        -String verifyToken
+        -DateTime verifiedAt
+        +String fullName
+        +String phoneNumber
+        +ROLE role
+        -DateTime bannedAt
+        -DateTime banExpiresAt
+        -String banReason
+        +DateTime createdAt
+        +DateTime updatedAt
+        +register(email, password, fullName) User
+        +verifyEmail(token) void
+        +login(email, password) Token
+        +logout() void
+        +requestPasswordReset(email) void
+        +resetPassword(token, newPassword) void
+        +updateProfile(data) User
+        +changePassword(oldPw, newPw) void
+        +applyToBeHost() void
+        +createRoom(data) Room
+        +bookRoom(roomId, dates) Booking
+        +cancelBooking(bookingId) void
+        +writeReview(bookingId, rating, comment) Review
+        +isBanned() Boolean
+        +hasRole(role) Boolean
+    }
+
+    %% ============== ROOM ==============
+    class Room {
+        -String id
+        +String title
+        +String description
+        +String address
+        +String city
+        +Decimal pricePerNight
+        +Int maxGuests
+        +FaultFindingStatus status
+        -String hostId
+        +DateTime createdAt
+        +DateTime updatedAt
+        +create(data) Room
+        +update(data) Room
+        +delete() void
+        +addImage(file) RoomImage
+        +removeImage(imageId) void
+        +search(filters) Room[]
+        +approve() void
+        +reject(reason) void
+        +isAvailable(checkIn, checkOut) Boolean
+    }
+
+    class RoomImage {
+        -String id
+        +String imageUrl
+        -String publicId
+        -String roomId
+        +DateTime createdAt
+        +DateTime updatedAt
+        +upload(file) RoomImage
+        +delete() void
+    }
+
+    %% ============== BOOKING ==============
+    class Booking {
+        -String id
+        +DateTime checkInDate
+        +DateTime checkOutDate
+        +Decimal totalPrice
+        +BookingStatus status
+        -String userId
+        -String roomId
+        +DateTime createdAt
+        +DateTime updatedAt
+        +create(roomId, dates) Booking
+        +confirm() void
+        +cancel() void
+        +complete() void
+        +calculateTotalPrice() Decimal
+        +expireIfUnpaid() void
+    }
+
+    %% ============== PAYMENT ==============
+    class Payment {
+        -String id
+        +PaymentMethod method
+        +PaymentStatus status
+        +Decimal amount
+        +String transactionId
+        -String bookingId
+        +DateTime createdAt
+        +DateTime updatedAt
+        +initiate(bookingId, method) Payment
+        +markCompleted(transactionId) void
+        +markFailed() void
+        +refund() void
+    }
+
+    %% ============== REVIEW ==============
+    class Review {
+        -String id
+        +Int rating
+        +String comment
+        -String userId
+        -String roomId
+        -String bookingId
+        +DateTime createdAt
+        +DateTime updatedAt
+        +create(bookingId, rating, comment) Review
+        +update(rating, comment) Review
+        +delete() void
+        +addImage(file) ReviewImage
+    }
+
+    class ReviewImage {
+        -String id
+        +String imageUrl
+        -String publicId
+        -String reviewId
+        +DateTime createdAt
+        +DateTime updatedAt
+        +upload(file) ReviewImage
+        +delete() void
+    }
+
+    %% ============== PASSWORD RESET TOKEN ==============
+    class PasswordResetToken {
+        -String id
+        -String userId
+        -String token
+        +DateTime createdAt
+        +DateTime expiredAt
+        +issue(userId) PasswordResetToken
+        +isExpired() Boolean
+        +consume() void
+    }
+
+    %% ============== RELATIONSHIPS ==============
+    User "1" --> "0..*" Room : hosts
+    User "1" --> "0..*" Booking : makes
+    User "1" --> "0..*" Review : writes
+    User "1" --> "0..*" PasswordResetToken : owns
+    User --> ROLE : has
+
+    Room "1" *-- "0..*" RoomImage : contains
+    Room "1" --> "0..*" Booking : booked as
+    Room "1" --> "0..*" Review : reviewed by
+    Room --> FaultFindingStatus : has
+
+    Booking "1" --> "0..*" Payment : paid via
+    Booking "1" --> "0..1" Review : results in
+    Booking --> BookingStatus : has
+
+    Review "1" *-- "0..*" ReviewImage : contains
+
+    Payment --> PaymentMethod : has
+    Payment --> PaymentStatus : has

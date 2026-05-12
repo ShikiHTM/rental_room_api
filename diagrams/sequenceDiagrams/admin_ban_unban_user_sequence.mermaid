@@ -1,0 +1,60 @@
+sequenceDiagram
+    actor Admin
+    actor Target as Banned User
+    participant fe@{ "type": "boundary" } as Admin Panel
+    participant API@{ "type": "control" } as API
+    participant db@{ "type": "database" } as Database
+    participant mw@{ "type": "control" } as checkBanned Middleware
+
+    Note over Admin,db: Phase 1 — Admin issues ban
+
+    Admin->>+fe: Select user → "Ban" (reason, optional expiresAt)
+    fe->>+API: PATCH /admin/users/:id/ban { banReason, banExpiresAt }
+    API->>API: verifyToken + isAdmin
+
+    API->>+db: user.findUnique(id)
+    db-->>-API: user or null
+
+    alt User missing
+        API-->>fe: 404 "User not found."
+        fe-->>Admin: Show error
+    else User found
+        API->>+db: user.update(<br/>bannedAt = now (if not already set),<br/>banReason, banExpiresAt)
+        db-->>-API: Updated
+        API-->>fe: 200 "Banned <fullName>"
+        fe-->>-Admin: Refresh user list
+    end
+
+    Note over Target,mw: Phase 2 — Banned user hits a protected route
+
+    Target->>API: Any request to a route using checkBanned
+    API->>+mw: verifyToken passes, run checkBanned
+    mw->>+db: user.findUnique(id, select ban fields)
+    db-->>-mw: user (with bannedAt, banExpiresAt, banReason)
+
+    alt bannedAt set AND (no expiry OR expiry in future)
+        mw-->>API: 403 with banDetails
+        API-->>Target: 403 "Your account is banned." + banDetails
+    else Not banned (or ban expired)
+        mw->>mw: Attach req.dbUser
+        mw-->>-API: next()
+        API-->>Target: Continue normal handler
+    end
+
+    Note over Admin,db: Phase 3 — Admin unbans
+
+    Admin->>+fe: Click "Unban" on user
+    fe->>+API: PATCH /admin/users/:id/unban
+    API->>API: verifyToken + isAdmin
+    API->>+db: user.findUnique(id)
+    db-->>-API: user or null
+
+    alt User missing or not currently banned
+        API-->>fe: 400 "User is either not banned or not found"
+        fe-->>Admin: Show error
+    else Banned user
+        API->>+db: user.update(<br/>bannedAt=null, banReason=null, banExpiresAt=null)
+        db-->>-API: Updated
+        API-->>fe: 200 "Unbanned <fullName>"
+        fe-->>-Admin: Refresh list
+    end

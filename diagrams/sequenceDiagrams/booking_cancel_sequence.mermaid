@@ -1,0 +1,34 @@
+sequenceDiagram
+    actor User as Guest
+    participant fe@{ "type": "boundary" } as Frontend
+    participant API@{ "type": "control" } as API
+    participant db@{ "type": "database" } as Database
+    participant ms@{ "type": "control" } as Meilisearch
+
+    Note over User,ms: Guest cancels their own PENDING booking
+
+    User->>+fe: My Bookings → "Cancel" on a PENDING booking
+    fe->>+API: PATCH /bookings/:id/cancel
+    API->>API: verifyToken + checkBanned
+
+    API->>+db: booking.findUnique(id)
+    db-->>-API: booking or null
+
+    alt Booking missing OR userId mismatch
+        API-->>fe: 403 "You can only cancel your own bookings"
+        fe-->>User: Show error
+    else Owner confirmed
+        alt status !== PENDING
+            API-->>fe: 400 "Cannot cancel a booking that is already confirmed or completed"
+            fe-->>User: Show error
+        else status === PENDING
+            API->>+db: booking.update(status = CANCELLED, include user+room)
+            db-->>-API: cancelled booking
+            API->>+ms: upsertBooking(toBookingDoc(cancelled))
+            ms-->>-API: Re-indexed
+            API-->>fe: 200 "Booking cancelled"
+            fe-->>-User: Refresh My Bookings list
+        end
+    end
+
+    Note over User,ms: CONFIRMED / COMPLETED cancellation goes through host or<br/>admin via PATCH /bookings/:id/status, not this endpoint.

@@ -1,0 +1,61 @@
+sequenceDiagram
+    actor User as User / Host
+    participant fe@{ "type": "boundary" } as Frontend
+    participant API@{ "type": "control" } as API
+    participant svc@{ "type": "control" } as RoomService
+    participant cld@{ "type": "boundary" } as Cloudinary
+    participant db@{ "type": "database" } as Database
+    participant ms@{ "type": "control" } as Meilisearch
+
+    Note over User,ms: Apply-to-Host (USER role) OR Create Room (HOST role)<br/>Both call roomService.handleRoomCreation()
+
+    User->>+fe: Fill room form + select images
+    fe->>+API: POST /room/apply  OR  POST /room/create
+    API->>API: verifyToken + checkBanned middlewares
+
+    alt Branch — applyToBeHost
+        API->>API: Require role === 'USER'
+        alt Already HOST/ADMIN
+            API-->>fe: 400 "You are already a Host"
+            fe-->>User: Show error
+        end
+    else Branch — createRoom
+        API->>API: Require role !== 'USER'
+        API->>+db: findFirst(room where hostId=user, status=PENDING)
+        db-->>-API: pendingRoom or null
+        alt Has pending application
+            API-->>fe: 400 "You already have a pending application."
+            fe-->>User: Show error
+        end
+    end
+
+    API->>+svc: handleRoomCreation(userId, body)
+    svc->>svc: Validate body (CreateRoomSchema)
+
+    alt Validation failed
+        svc-->>API: ValidationError(issues)
+        API-->>fe: 400 with field issues
+        fe-->>User: Show validation errors
+    else Validation passed
+        loop For each image (parallel)
+            svc->>+cld: upload(base64/url)
+            cld-->>-svc: { image_url, public_id }
+        end
+
+        svc->>+db: room.create(<br/>...data, hostId, status=PENDING,<br/>images.create=[{imageUrl, publicId}])
+        alt DB create failed
+            db-->>svc: Error
+            svc->>cld: destroy(public_id) for each uploaded image
+            svc-->>API: Throw error
+            API-->>fe: 500 / propagated error
+        else DB create ok
+            db-->>-svc: room (with images, host)
+            svc->>+ms: upsertRoom(toRoomDoc(room))
+            ms-->>-svc: Indexed (status=PENDING)
+            svc-->>-API: room
+            API-->>-fe: 201 "Application sent" / "Room created — awaits approval"
+            fe-->>-User: Show pending state
+        end
+    end
+
+    Note over User,ms: Room is in PENDING state — not visible to public<br/>until Admin approves (see admin_approve_room_sequence)
