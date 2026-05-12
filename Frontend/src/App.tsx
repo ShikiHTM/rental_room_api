@@ -29,8 +29,8 @@ function App() {
             <Route path="profile" element={<Profile />} />
             <Route path="forgot-password" element={<ForgotPassword />} />
             <Route path="reset-password" element={<ResetPassword />} />
-            <Route path="admin" element={<Admin />} />
           </Route>
+          <Route path="admin" element={<Admin />} />
         </Routes>
       </BrowserRouter>
       <Toaster position="top-right" />
