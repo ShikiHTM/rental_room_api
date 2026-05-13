@@ -16,7 +16,13 @@ const Login = () => {
     try {
       const data = await authService.login(email, password);
       login(data.user);
-      navigate('/');
+      
+      // Redirect based on role
+      if (data.user.role === 'ADMIN') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed');
     }

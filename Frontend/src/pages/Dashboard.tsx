@@ -4,6 +4,21 @@ import { roomService, type Room } from '../services/room.service';
 import { bookingService, type Booking } from '../services/booking.service';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { 
+  Plus, 
+  Home, 
+  Calendar, 
+  MapPin, 
+  DollarSign, 
+  Users, 
+  Image as ImageIcon, 
+  Edit, 
+  Trash2, 
+  ChevronLeft,
+  CheckCircle,
+  XCircle,
+  LayoutDashboard
+} from 'lucide-react';
 import Modal from '../components/Modal';
 import './Dashboard.css';
 
@@ -124,50 +139,154 @@ const Dashboard = () => {
   if (!isAuthenticated) return null;
 
   const renderRoomForm = () => (
-    <div className="card" style={{ padding: '2rem', marginTop: '1rem' }}>
-      <h2>{isEditing ? 'Edit Room' : user?.role === 'USER' ? 'Apply to be a Host' : 'Add New Room'}</h2>
-      <form onSubmit={handleApplyHost} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-        <input type="text" placeholder="Title" required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
-        <textarea placeholder="Description" required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
-        <input type="text" placeholder="Address" required value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
-        <input type="text" placeholder="City" required value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} />
-        <input type="number" placeholder="Price Per Night" required min="0" value={formData.pricePerNight} onChange={e => setFormData({...formData, pricePerNight: Number(e.target.value)})} />
-        <input type="number" placeholder="Max Guests" required min="1" value={formData.maxGuests} onChange={e => setFormData({...formData, maxGuests: Number(e.target.value)})} />
+    <div className="dashboard-form-container">
+      <div className="card" style={{ padding: '2rem' }}>
+        <div className="form-header">
+          <div className="flex-between">
+            <h2>{isEditing ? 'Edit Property Details' : user?.role === 'USER' ? 'Apply to become a Host' : 'Add New Property'}</h2>
+            <LayoutDashboard size={24} color="var(--primary)" />
+          </div>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+            {user?.role === 'USER' 
+              ? 'Tell us about your first property to get started.' 
+              : 'Fill in the details below to list your property.'}
+          </p>
+        </div>
         
-        <div className="image-inputs" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <label>Images (URLs)</label>
-          {formData.images.map((img, index) => (
-            <div key={index} style={{ display: 'flex', gap: '0.5rem' }}>
-              <input 
-                type="text" 
-                placeholder="Image URL" 
-                required={index === 0}
-                value={img} 
-                onChange={e => {
-                  const newImages = [...formData.images];
-                  newImages[index] = e.target.value;
-                  setFormData({...formData, images: newImages});
-                }} 
-                style={{ flex: 1 }}
-              />
-              {formData.images.length > 1 && (
-                <button type="button" className="btn-text" style={{ color: 'var(--danger)' }} onClick={() => {
-                  const newImages = formData.images.filter((_, i) => i !== index);
-                  setFormData({...formData, images: newImages});
-                }}>Remove</button>
-              )}
+        <form onSubmit={handleApplyHost}>
+          <div className="form-section">
+            <h3 className="form-section-title"><Home size={18} /> Basic Information</h3>
+            <div className="form-grid">
+              <div className="form-group full-width">
+                <label>Property Title</label>
+                <input 
+                  type="text" 
+                  className="form-control"
+                  placeholder="e.g. Cozy Apartment near City Center" 
+                  required 
+                  value={formData.title} 
+                  onChange={e => setFormData({...formData, title: e.target.value})} 
+                />
+              </div>
+
+              <div className="form-group full-width">
+                <label>Description</label>
+                <textarea 
+                  className="form-control"
+                  placeholder="Describe your space, amenities, and surroundings..." 
+                  required 
+                  value={formData.description} 
+                  onChange={e => setFormData({...formData, description: e.target.value})} 
+                />
+              </div>
             </div>
-          ))}
-          <button type="button" className="btn-text" style={{ alignSelf: 'flex-start' }} onClick={() => {
-            setFormData({...formData, images: [...formData.images, '']});
-          }}>+ Add Another Image</button>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-          <button type="button" onClick={closeForm} className="btn-text">Cancel</button>
-          <button type="submit" className="btn-primary">{isEditing ? 'Save Changes' : 'Submit'}</button>
-        </div>
-      </form>
+          </div>
+
+          <div className="form-section">
+            <h3 className="form-section-title"><MapPin size={18} /> Location Details</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Address</label>
+                <input 
+                  type="text" 
+                  className="form-control"
+                  placeholder="Street address" 
+                  required 
+                  value={formData.address} 
+                  onChange={e => setFormData({...formData, address: e.target.value})} 
+                />
+              </div>
+
+              <div className="form-group">
+                <label>City</label>
+                <input 
+                  type="text" 
+                  className="form-control"
+                  placeholder="City" 
+                  required 
+                  value={formData.city} 
+                  onChange={e => setFormData({...formData, city: e.target.value})} 
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="form-section">
+            <h3 className="form-section-title"><DollarSign size={18} /> Pricing & Capacity</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Price Per Night ($)</label>
+                <input 
+                  type="number" 
+                  className="form-control"
+                  placeholder="0" 
+                  required 
+                  min="0" 
+                  value={formData.pricePerNight} 
+                  onChange={e => setFormData({...formData, pricePerNight: Number(e.target.value)})} 
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Max Guests</label>
+                <input 
+                  type="number" 
+                  className="form-control"
+                  placeholder="1" 
+                  required 
+                  min="1" 
+                  value={formData.maxGuests} 
+                  onChange={e => setFormData({...formData, maxGuests: Number(e.target.value)})} 
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div className="form-section">
+            <h3 className="form-section-title"><ImageIcon size={18} /> Property Images</h3>
+            <div className="form-group full-width">
+              <label>Images (URLs)</label>
+              <div className="image-inputs">
+                {formData.images.map((img, index) => (
+                  <div key={index} className="image-input-item">
+                    <input 
+                      type="text" 
+                      className="form-control"
+                      placeholder="https://example.com/image.jpg" 
+                      required={index === 0}
+                      value={img} 
+                      onChange={e => {
+                        const newImages = [...formData.images];
+                        newImages[index] = e.target.value;
+                        setFormData({...formData, images: newImages});
+                      }} 
+                      style={{ flex: 1 }}
+                    />
+                    {formData.images.length > 1 && (
+                      <button type="button" className="btn-text" style={{ color: 'var(--danger)' }} onClick={() => {
+                        const newImages = formData.images.filter((_, i) => i !== index);
+                        setFormData({...formData, images: newImages});
+                      }}>Remove</button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" className="btn-text" style={{ marginTop: '0.5rem' }} onClick={() => {
+                  setFormData({...formData, images: [...formData.images, '']});
+                }}>+ Add another image URL</button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="form-actions">
+            <button type="button" onClick={closeForm} className="btn-text" style={{ color: 'var(--text-secondary)' }}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              {isEditing ? 'Update Property' : user?.role === 'USER' ? 'Submit Application' : 'Create Listing'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 
@@ -175,16 +294,27 @@ const Dashboard = () => {
     return (
       <div className="dashboard-page animate-fade-in">
         {!showForm ? (
-          <div className="card text-center" style={{ padding: '3rem 1rem', maxWidth: '600px', margin: '0 auto' }}>
-            <h2 style={{ marginBottom: '1rem' }}>Become a Host</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-              Earn money by renting out your beautiful spaces to travelers from around the world.
+          <div className="card onboarding-card">
+            <div className="onboarding-icon-container">
+              <Home size={48} color="var(--primary)" />
+            </div>
+            <h2>Ready to Host?</h2>
+            <p>
+              Join our community of hosts and start earning. Share your space, 
+              meet new people, and create unforgettable experiences for travelers.
             </p>
-            <button onClick={() => setShowForm(true)} className="btn-primary">
-              Apply Now
+            <button onClick={() => setShowForm(true)} className="btn-primary" style={{ padding: '1rem 3rem', fontSize: '1.125rem', borderRadius: 'var(--radius-lg)' }}>
+              Apply to become a Host
             </button>
           </div>
-        ) : renderRoomForm()}
+        ) : (
+          <div style={{ marginTop: '1rem' }}>
+            <button onClick={closeForm} className="btn-text" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+              <ChevronLeft size={18} /> Back to Overview
+            </button>
+            {renderRoomForm()}
+          </div>
+        )}
       </div>
     );
   }
@@ -235,9 +365,13 @@ const Dashboard = () => {
                         <td>${room.pricePerNight}</td>
                         <td><span className={`status-badge status-${room.status?.toLowerCase() || 'pending'}`}>{room.status || 'PENDING'}</span></td>
                         <td>
-                          <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            <button className="btn-text" onClick={() => openEditForm(room)}>Edit</button>
-                            <button className="btn-text" style={{ color: 'var(--danger)' }} onClick={() => setRoomToDelete(room)}>Delete</button>
+                          <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <button className="btn-icon-text" onClick={() => openEditForm(room)} title="Edit">
+                              <Edit size={16} /> Edit
+                            </button>
+                            <button className="btn-icon-text danger" onClick={() => setRoomToDelete(room)} title="Delete">
+                              <Trash2 size={16} /> Delete
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -269,9 +403,13 @@ const Dashboard = () => {
                         <td><span className={`status-badge status-${res.status?.toLowerCase()}`}>{res.status}</span></td>
                         <td>
                           {res.status === 'PENDING' && (
-                            <div style={{display: 'flex', gap: '0.5rem'}}>
-                              <button className="btn-text" style={{color: 'var(--success)'}} onClick={() => handleStatusUpdate(res.id, 'CONFIRMED')}>Accept</button>
-                              <button className="btn-text" style={{color: 'var(--danger)'}} onClick={() => handleStatusUpdate(res.id, 'CANCELLED')}>Reject</button>
+                            <div style={{display: 'flex', gap: '0.75rem'}}>
+                              <button className="btn-icon-text success" onClick={() => handleStatusUpdate(res.id, 'CONFIRMED')}>
+                                <CheckCircle size={16} /> Accept
+                              </button>
+                              <button className="btn-icon-text danger" onClick={() => handleStatusUpdate(res.id, 'CANCELLED')}>
+                                <XCircle size={16} /> Reject
+                              </button>
                             </div>
                           )}
                         </td>

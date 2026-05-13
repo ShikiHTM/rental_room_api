@@ -1,51 +1,86 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { adminService } from '../services/admin.service';
 import { type User } from '../services/auth.service';
 import { type Room } from '../services/room.service';
+import { 
+  Users, 
+  Home, 
+  ShieldCheck, 
+  UserX, 
+  CheckCircle, 
+  XCircle, 
+  LayoutDashboard, 
+  LogOut, 
+  ExternalLink,
+  Search,
+  Bell
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import './Admin.css';
 
-const UserRow = ({ user }: { user: User }) => {
-  const [bannedAt, setBannedAt] = useState<string | null | undefined>(user.bannedAt);
+const UserRow = ({ user, onAction }: { user: User, onAction: () => void }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleBan = async () => {
+    setIsProcessing(true);
     try {
-      const updatedUser = await adminService.banUser(user.id);
-      setBannedAt(updatedUser?.bannedAt || new Date().toISOString());
+      await adminService.banUser(user.id);
+      toast.success(`User ${user.fullName} has been banned`);
+      onAction();
     } catch (error) {
-      // Error handled in service
+      toast.error('Failed to ban user');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleUnban = async () => {
+    setIsProcessing(true);
     try {
       await adminService.unbanUser(user.id);
-      setBannedAt(null);
+      toast.success(`User ${user.fullName} has been unbanned`);
+      onAction();
     } catch (error) {
-      // Error handled in service
+      toast.error('Failed to unban user');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return (
     <tr>
-      <td><strong>{user.fullName}</strong></td>
+      <td>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="admin-user-avatar" style={{ width: '32px', height: '32px', fontSize: '0.8rem' }}>
+            {user.fullName.charAt(0)}
+          </div>
+          <span style={{ fontWeight: 500 }}>{user.fullName}</span>
+        </div>
+      </td>
       <td>{user.email}</td>
       <td>
-        <span className={`status-badge status-${user.role?.toLowerCase() || 'user'}`}>
+        <span className={`admin-badge ${user.role === 'ADMIN' ? 'badge-danger' : user.role === 'HOST' ? 'badge-info' : 'badge-success'}`}>
           {user.role || 'USER'}
         </span>
       </td>
       <td>
+        {user.bannedAt ? (
+          <span className="admin-badge badge-danger">Banned</span>
+        ) : (
+          <span className="admin-badge badge-success">Active</span>
+        )}
+      </td>
+      <td>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {bannedAt ? (
-            <button className="btn-text" style={{ color: 'var(--success)' }} onClick={handleUnban}>
-              Unban
+          {user.bannedAt ? (
+            <button className="action-btn" onClick={handleUnban} disabled={isProcessing} title="Unban User">
+              <CheckCircle size={16} color="var(--success)" />
             </button>
           ) : (
-            <button className="btn-text" style={{ color: 'var(--danger)' }} onClick={handleBan}>
-              Ban User
+            <button className="action-btn" onClick={handleBan} disabled={isProcessing || user.role === 'ADMIN'} title="Ban User">
+              <UserX size={16} color={user.role === 'ADMIN' ? '#ccc' : 'var(--danger)'} />
             </button>
           )}
         </div>
@@ -54,40 +89,50 @@ const UserRow = ({ user }: { user: User }) => {
   );
 };
 
-const RoomRow = ({ room }: { room: Room }) => {
-  const [status, setStatus] = useState<string>(room.status || 'PENDING');
+const RoomRow = ({ room, onAction }: { room: Room, onAction: () => void }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleUpdateAction = async (action: 'APPROVE' | 'REJECT') => {
+    setIsProcessing(true);
     try {
       await adminService.updateRoomStatus(room.id, action);
-      setStatus(action === 'APPROVE' ? 'APPROVED' : 'REJECTED');
+      toast.success(`Property ${action === 'APPROVE' ? 'approved' : 'rejected'}`);
+      onAction();
     } catch (error) {
-      // Error handled in service
+      toast.error('Failed to update property status');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   return (
     <tr>
-      <td><strong>{room.title}</strong></td>
-      <td>{room.hostId || (room.host?.email)}</td>
-      <td>{room.address}, {room.city}</td>
       <td>
-        <span className={`status-badge status-${status.toLowerCase()}`}>
-          {status}
+        <div style={{ fontWeight: 500 }}>{room.title}</div>
+        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>ID: {room.id.substring(0, 8)}...</div>
+      </td>
+      <td>{room.host?.fullName || 'Unknown Host'}</td>
+      <td>{room.city}</td>
+      <td>
+        <span className={`admin-badge ${
+          room.status === 'APPROVED' ? 'badge-success' : 
+          room.status === 'REJECTED' ? 'badge-danger' : 'badge-warning'
+        }`}>
+          {room.status}
         </span>
       </td>
       <td>
-        {status === 'PENDING' ? (
+        {room.status === 'PENDING' ? (
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button className="btn-text" style={{ color: 'var(--success)' }} onClick={() => handleUpdateAction('APPROVE')}>
-              Approve
+            <button className="action-btn" onClick={() => handleUpdateAction('APPROVE')} disabled={isProcessing} title="Approve">
+              <CheckCircle size={16} color="var(--success)" />
             </button>
-            <button className="btn-text" style={{ color: 'var(--danger)' }} onClick={() => handleUpdateAction('REJECT')}>
-              Reject
+            <button className="action-btn" onClick={() => handleUpdateAction('REJECT')} disabled={isProcessing} title="Reject">
+              <XCircle size={16} color="var(--danger)" />
             </button>
           </div>
         ) : (
-          <span style={{ color: 'var(--text-secondary)' }}>No actions needed</span>
+          <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>Completed</span>
         )}
       </td>
     </tr>
@@ -95,7 +140,7 @@ const RoomRow = ({ room }: { room: Room }) => {
 };
 
 const Admin = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'users' | 'rooms'>('users');
   const [users, setUsers] = useState<User[]>([]);
@@ -133,86 +178,176 @@ const Admin = () => {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   if (!isAuthenticated || user?.role !== 'ADMIN') return null;
 
+  const pendingApprovals = rooms.filter(r => r.status === 'PENDING').length;
+  const totalHosts = users.filter(u => u.role === 'HOST').length;
+
   return (
-    <div className="admin-page animate-fade-in">
-      <div className="admin-header">
-        <h1>Admin Dashboard</h1>
-        <p>Manage users, roles, and property approvals.</p>
-      </div>
+    <div className="admin-layout">
+      {/* Sidebar */}
+      <aside className="admin-sidebar">
+        <div className="admin-sidebar-header">
+          <ShieldCheck size={28} color="var(--primary)" />
+          <h2>Admin Panel</h2>
+        </div>
+        
+        <nav className="admin-nav">
+          <button 
+            className={`admin-nav-item ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => setActiveTab('users')}
+          >
+            <Users size={20} />
+            <span>Users Management</span>
+          </button>
+          
+          <button 
+            className={`admin-nav-item ${activeTab === 'rooms' ? 'active' : ''}`}
+            onClick={() => setActiveTab('rooms')}
+          >
+            <Home size={20} />
+            <span>Property Approvals</span>
+          </button>
 
-      <div className="dashboard-tabs">
-        <button 
-          className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`} 
-          onClick={() => setActiveTab('users')}
-        >
-          Users Management
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === 'rooms' ? 'active' : ''}`} 
-          onClick={() => setActiveTab('rooms')}
-        >
-          Property Approvals
-        </button>
-      </div>
+          <div style={{ marginTop: '2rem', padding: '0 1rem', fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            System
+          </div>
+          
+          <Link to="/" className="admin-nav-item">
+            <ExternalLink size={20} />
+            <span>Go to Website</span>
+          </Link>
+        </nav>
 
-      <div className="dashboard-content">
-        {isLoading ? (
-          <div className="loading-container">Loading admin data...</div>
-        ) : activeTab === 'users' ? (
-          <div className="admin-users card">
-            <h2>System Users</h2>
-            {users.length === 0 ? (
-              <p>No users found.</p>
-            ) : (
-              <div className="rooms-table-container">
-                <table className="dashboard-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Current Role</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map(u => (
-                      <UserRow key={u.id} user={u} />
-                    ))}
-                  </tbody>
-                </table>
+        <div className="admin-sidebar-footer">
+          <button className="admin-nav-item" onClick={handleLogout} style={{ color: '#f87171' }}>
+            <LogOut size={20} />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="admin-main">
+        {/* Topbar */}
+        <header className="admin-topbar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>
+              {activeTab === 'users' ? 'User Management' : 'Property Approvals'}
+            </h1>
+          </div>
+          
+          <div className="admin-topbar-user">
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{user.fullName}</div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>System Administrator</div>
+            </div>
+            <div className="admin-user-avatar">
+              {user.fullName.charAt(0)}
+            </div>
+          </div>
+        </header>
+
+        {/* Stats Grid */}
+        <div className="admin-stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon" style={{ backgroundColor: '#e0f2fe', color: '#0369a1' }}>
+              <Users size={24} />
+            </div>
+            <div className="stat-info">
+              <h3>Total Users</h3>
+              <div className="stat-value">{users.length}</div>
+            </div>
+          </div>
+          
+          <div className="stat-card">
+            <div className="stat-icon" style={{ backgroundColor: '#fef3c7', color: '#b45309' }}>
+              <ShieldCheck size={24} />
+            </div>
+            <div className="stat-info">
+              <h3>Total Hosts</h3>
+              <div className="stat-value">{totalHosts}</div>
+            </div>
+          </div>
+          
+          <div className="stat-card">
+            <div className="stat-icon" style={{ backgroundColor: '#dcfce7', color: '#15803d' }}>
+              <Home size={24} />
+            </div>
+            <div className="stat-info">
+              <h3>Total Properties</h3>
+              <div className="stat-value">{rooms.length}</div>
+            </div>
+          </div>
+          
+          <div className="stat-card">
+            <div className="stat-icon" style={{ backgroundColor: '#fee2e2', color: '#b91c1c' }}>
+              <Bell size={24} />
+            </div>
+            <div className="stat-info">
+              <h3>Pending Approvals</h3>
+              <div className="stat-value">{pendingApprovals}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="admin-content-card">
+          <div className="admin-table-header">
+            <h2>{activeTab === 'users' ? 'System Users' : 'Properties Queue'}</h2>
+            <button className="action-btn" onClick={fetchData} title="Refresh Data">
+              Refresh
+            </button>
+          </div>
+
+          <div className="admin-table-container">
+            {isLoading ? (
+              <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                Loading system data...
               </div>
+            ) : activeTab === 'users' ? (
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(u => (
+                    <UserRow key={u.id} user={u} onAction={fetchData} />
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Property</th>
+                    <th>Host</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rooms.map(r => (
+                    <RoomRow key={r.id} room={r} onAction={fetchData} />
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
-        ) : (
-          <div className="admin-rooms card">
-            <h2>Property Approvals</h2>
-            {rooms.length === 0 ? (
-              <p>No properties found.</p>
-            ) : (
-              <div className="rooms-table-container">
-                <table className="dashboard-table">
-                  <thead>
-                    <tr>
-                      <th>Property Name</th>
-                      <th>Host ID</th>
-                      <th>Location</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rooms.map(room => (
-                      <RoomRow key={room.id} room={room} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
