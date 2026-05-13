@@ -1,9 +1,12 @@
 import type { Response } from "express";
 import db from "../Database/Utils/db.js"
 import { catchAsync } from "../Utils/catchAsync.utils.js";
-import { BadRequestError, NotFoundError } from "../Utils/AppError.js";
+import { BadRequestError, NotFoundError, ValidationError } from "../Utils/AppError.js";
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
 import { meiliService } from "../services/meilisearch.service.js";
+import { platformConfig } from "../config/platform.config.js";
+import { removeUndefined } from "../Utils/cleanData.js";
+import { z } from "zod";
 
 export const approveRoom = catchAsync(async (req: AuthRequest, res: Response) => {
     const { roomId } = req.params as { roomId: string };
@@ -70,6 +73,99 @@ export const rejectRoom = catchAsync(async (req: AuthRequest, res: Response) => 
 export const getUsers = catchAsync( async(_req: AuthRequest, res: Response) => {
     const users = await db.user.findMany();
     return res.status(200).json({ data: users });
+})
+
+// GET /admin/stats
+export const getStats = catchAsync(async (_req: AuthRequest, res: Response) => {
+    const [totalUsers, pendingRooms, paymentAggregate] = await Promise.all([
+        db.user.count(),
+        db.room.count({ where: { status: 'PENDING' } }),
+        db.payment.aggregate({
+            _sum: { amount: true },
+            where: { status: 'COMPLETED' }
+        })
+    ]);
+
+    const grossPaid = Number(paymentAggregate._sum.amount ?? 0);
+    const platformRevenue = grossPaid * platformConfig.feeRate;
+
+    return res.status(200).json({
+        data: {
+            totalUsers,
+            pendingRooms,
+            grossPaid,
+            platformFeeRate: platformConfig.feeRate,
+            platformRevenue,
+        }
+    });
+})
+
+// GET /admin/payments
+export const listPayments = catchAsync(async (_req: AuthRequest, res: Response) => {
+    const payments = await db.payment.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+            booking: {
+                include: {
+                    user: { select: { id: true, fullName: true, email: true } },
+                    room: { select: { id: true, title: true, city: true } },
+                }
+            }
+        }
+    });
+
+    const rate = platformConfig.feeRate;
+    const data = payments.map(p => {
+        const amount = Number(p.amount);
+        return {
+            id: p.id,
+            method: p.method,
+            status: p.status,
+            amount,
+            platformFee: p.status === 'COMPLETED' ? amount * rate : 0,
+            transactionId: p.transactionId,
+            createdAt: p.createdAt,
+            booking: p.booking ? {
+                id: p.booking.id,
+                checkInDate: p.booking.checkInDate,
+                checkOutDate: p.booking.checkOutDate,
+                user: p.booking.user,
+                room: p.booking.room,
+            } : null,
+        };
+    });
+
+    return res.status(200).json({ data });
+})
+
+const UpdateUserAdminSchema = z.object({
+    fullName: z.string().min(2).max(100).optional(),
+    phoneNumber: z.string().max(20).optional(),
+    role: z.enum(['USER', 'HOST', 'ADMIN']).optional(),
+}).refine(v => Object.values(v).some(x => x !== undefined), {
+    message: 'At least one field is required',
+});
+
+// PATCH /admin/users/:id
+export const updateUser = catchAsync(async (req: AuthRequest, res: Response) => {
+    const { id } = req.params as { id: string };
+
+    const parsed = UpdateUserAdminSchema.safeParse(req.body);
+    if (!parsed.success) throw new ValidationError(parsed.error.issues);
+
+    const target = await db.user.findUnique({ where: { id } });
+    if (!target) throw new NotFoundError('User not found.');
+
+    const updated = await db.user.update({
+        where: { id },
+        data: removeUndefined(parsed.data),
+        select: {
+            id: true, email: true, fullName: true, phoneNumber: true, role: true,
+            bannedAt: true, banReason: true, banExpiresAt: true, createdAt: true,
+        }
+    });
+
+    return res.status(200).json({ message: 'User updated', data: updated });
 })
 
 export const getAllBookings = catchAsync( async(_req: AuthRequest, res: Response) => {

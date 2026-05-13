@@ -39,7 +39,7 @@ class MeilisearchService {
 
     async upsertRoom(room: IRoomDocument) {
         try {
-            await this.client.index(this.ROOM_INDEX).addDocuments([room]);
+            await this.client.index(this.ROOM_INDEX).addDocuments([room], { primaryKey: 'id' });
         } catch (error) {
             logger.error(`Failed to upsert room ${room.id} to Meilisearch`, error);
         }
@@ -78,7 +78,7 @@ class MeilisearchService {
 
     async upsertBooking(booking: IBookingDocument) {
         try {
-            await this.client.index(this.BOOKING_INDEX).addDocuments([booking]);
+            await this.client.index(this.BOOKING_INDEX).addDocuments([booking], { primaryKey: 'id' });
         } catch (error) {
             logger.error(`Failed to upsert booking ${booking.id} to Meilisearch`, error);
         }

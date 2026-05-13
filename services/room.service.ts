@@ -126,6 +126,49 @@ export class RoomService {
         }
     }
 
+    public async addRoomImages(roomId: string, user: IUserPayload, images: string[]) {
+        if (!images || images.length === 0) {
+            throw new ValidationError([{ code: 'custom', path: ['images'], message: 'No images provided' }]);
+        }
+
+        const room = await db.room.findUnique({ where: { id: roomId } });
+        if (!room) throw new NotFoundError('Room not found');
+
+        const isOwner = room.hostId === user.id;
+        const isAdmin = user.role === 'ADMIN';
+        if (!isOwner && !isAdmin) throw new ForbiddenError('You do not own this room');
+
+        const uploaded = await Promise.all(images.map(img => cloudinaryService.upload(img)));
+
+        try {
+            return await db.roomImage.createManyAndReturn({
+                data: uploaded.map(img => ({
+                    roomId,
+                    imageUrl: img.image_url,
+                    publicId: img.public_id,
+                })),
+            });
+        } catch (error) {
+            await Promise.allSettled(uploaded.map(img => cloudinaryService.destroy(img.public_id)));
+            throw error;
+        }
+    }
+
+    public async removeRoomImage(roomId: string, imageId: string, user: IUserPayload) {
+        const image = await db.roomImage.findUnique({
+            where: { id: imageId },
+            include: { room: true },
+        });
+        if (!image || image.roomId !== roomId) throw new NotFoundError('Image not found');
+
+        const isOwner = image.room.hostId === user.id;
+        const isAdmin = user.role === 'ADMIN';
+        if (!isOwner && !isAdmin) throw new ForbiddenError('You do not own this room');
+
+        await db.roomImage.delete({ where: { id: imageId } });
+        await cloudinaryService.destroy(image.publicId).catch(() => {});
+    }
+
     public async handleDeleteRoom(roomId: string, user: IUserPayload) {
         const room = await db.room.findUnique({
             where: { id: roomId },

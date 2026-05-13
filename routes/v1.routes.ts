@@ -5,6 +5,7 @@ import bookingRoutes from './booking.routes.js';
 import adminRoutes from './admin.routes.js';
 import userRoutes from './user.routes.js';
 import reviewRouter from './review.routes.js';
+import paymentRoutes from './payment.routes.js';
 
 const v1Router: Router = Router();
 
@@ -14,5 +15,6 @@ v1Router.use('/bookings', bookingRoutes);
 v1Router.use('/admin', adminRoutes);
 v1Router.use('/users', userRoutes);
 v1Router.use('/reviews', reviewRouter);
+v1Router.use('/payments', paymentRoutes);
 
 export default v1Router;

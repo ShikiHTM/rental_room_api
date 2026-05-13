@@ -1,0 +1,13 @@
+
+stateDiagram-v2
+    state "Room Status" as Room {
+        [*] --> R_PENDING : Room created
+        R_PENDING : PENDING
+        R_APPROVED : APPROVED
+        R_REJECTED : REJECTED
+
+        R_PENDING  --> R_APPROVED : Admin approves
+        R_PENDING  --> R_REJECTED : Admin rejects
+        R_REJECTED --> R_PENDING  : Host resubmits
+        R_APPROVED --> [*]
+    }

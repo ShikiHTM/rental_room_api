@@ -4,18 +4,33 @@ services:
     restart: always
     shm_size: 128mb
 
+    env_file:
+      - .env
+
     environment:
-      - POSTGRES_USER=shiki
-      - POSTGRES_PASSWORD=Botan123
-      - POSTGRES_DB=room_rental
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
 
     ports:
       - '5433:5432'
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq_service
     restart: always
+
+    env_file:
+      - .env
 
     ports:
       # For UI
@@ -24,16 +39,19 @@ services:
       - '5672:5672'
 
     environment:
-      - RABBITMQ_DEFAULT_USER=shiki
-      - RABBITMQ_DEFAULT_PASS=Botan123
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
 
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
   meilisearch:
-    image: getmeili/meilisearch:latest
+    image: getmeili/meilisearch:v1.42.1
     container_name: meilisearch_service
     restart: always
+
+    env_file:
+      - .env
 
     ports:
       - '7700:7700'
@@ -44,6 +62,104 @@ services:
     volumes:
       - meilisearch_data:/meili_data
 
+  webserver:
+    image: nginx:1.27-alpine
+    container_name: nginx_backend
+    restart: always
+
+    # Only expose locally; Cloudflare Tunnel routes api.shikii.dev → this service
+    ports:
+      - '127.0.0.1:8083:80'
+
+    volumes:
+      - ./nginx/backend/nginx.conf:/etc/nginx/nginx.conf:ro
+
+    depends_on:
+      - backend
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: nginx_frontend
+    restart: unless-stopped
+
+    # Only expose locally; Cloudflare Tunnel routes shikii.dev → this service
+    ports:
+      - '127.0.0.1:80:80'
+
+    depends_on:
+      - backend
+
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.admin
+      args:
+        VITE_API_URL: https://api.shikii.dev
+    container_name: nginx_admin
+    restart: unless-stopped
+
+    # Only expose locally; Cloudflare Tunnel routes admin.shikii.dev → this service
+    ports:
+      - '127.0.0.1:8084:80'
+
+    depends_on:
+      - backend
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    command: tunnel --no-autoupdate run --protocol http2 --token ${CLOUDFLARE_TUNNEL_TOKEN}
+
+    depends_on:
+      - frontend
+      - admin
+      - webserver
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: backend_service
+    restart: unless-stopped
+
+    ports:
+      - '3000:3000'
+
+    env_file:
+      - .env
+
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - MEILISEARCH_HOST=http://meilisearch:7700
+
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+    volumes:
+      - .:/app
+      - /app/Frontend
+      - /app/node_modules
+
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      meilisearch:
+        condition: service_started
+
 volumes:
+  postgres_data:
   rabbitmq_data:
   meilisearch_data:

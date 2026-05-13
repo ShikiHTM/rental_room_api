@@ -37,7 +37,7 @@ const Layout = () => {
         <div className="container navbar-content">
           <Link to="/" className="brand">
             <HomeIcon className="brand-icon" />
-            <span>RentalRoom</span>
+            <span>Quolifa</span>
           </Link>
           
           <nav className="nav-links">
@@ -55,17 +55,13 @@ const Layout = () => {
                     <Link to="/profile" className="dropdown-item" onClick={() => setShowDropdown(false)}>Profile</Link>
                     <Link to="/my-bookings" className="dropdown-item" onClick={() => setShowDropdown(false)}>My Bookings</Link>
                     
-                    <div className="dropdown-divider"></div>
-                    <div className="dropdown-section-title">Hosting</div>
-                    <Link to="/dashboard" className="dropdown-item" onClick={() => setShowDropdown(false)}>
-                      {user?.role === 'USER' ? 'Become a Host' : 'Host Dashboard'}
-                    </Link>
-
-                    {user?.role === 'ADMIN' && (
+                    {user?.role !== 'ADMIN' && (
                       <>
                         <div className="dropdown-divider"></div>
-                        <div className="dropdown-section-title">Administration</div>
-                        <Link to="/admin" className="dropdown-item" onClick={() => setShowDropdown(false)}>Admin Panel</Link>
+                        <div className="dropdown-section-title">Hosting</div>
+                        <Link to="/dashboard" className="dropdown-item" onClick={() => setShowDropdown(false)}>
+                          {user?.role === 'USER' ? 'Become a Host' : 'Host Dashboard'}
+                        </Link>
                       </>
                     )}
 
@@ -100,7 +96,7 @@ const Layout = () => {
 
       <footer className="footer">
         <div className="container footer-content">
-          <p>&copy; {new Date().getFullYear()} RentalRoom. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Quolifa. All rights reserved.</p>
         </div>
       </footer>
     </div>

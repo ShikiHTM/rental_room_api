@@ -9,31 +9,24 @@ const Home = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    const fetchRooms = async () => {
+    let cancelled = false;
+    const handle = setTimeout(async () => {
       try {
-        const data = await roomService.getAllRooms();
-        // Assuming the API returns an array, or { data: Room[] }
-        // Depending on backend implementation, adjust if needed
-        setRooms(Array.isArray(data) ? data : (data as any).data || []);
+        const data = await roomService.searchRooms(searchQuery.trim());
+        if (!cancelled) setRooms(Array.isArray(data) ? data : []);
       } catch (error) {
-        console.error('Failed to fetch rooms', error);
+        console.error('Failed to search rooms', error);
+        if (!cancelled) setRooms([]);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
+    }, searchQuery ? 250 : 0);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
     };
-
-    fetchRooms();
-  }, []);
-
-  const filteredRooms = rooms.filter(room => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      room.city.toLowerCase().includes(query) ||
-      room.title.toLowerCase().includes(query) ||
-      room.address.toLowerCase().includes(query)
-    );
-  });
+  }, [searchQuery]);
 
   return (
     <div className="home-page">
@@ -42,9 +35,9 @@ const Home = () => {
           <h1>Find your perfect stay.</h1>
           <p>Discover beautiful places to stay and work anywhere in the country.</p>
           <div className="search-bar">
-            <input 
-              type="text" 
-              placeholder="Where are you going? (e.g. city, title)" 
+            <input
+              type="text"
+              placeholder="Where are you going? (e.g. city, title)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -70,14 +63,14 @@ const Home = () => {
           </div>
         ) : (
           <div className="rooms-grid">
-            {filteredRooms.length > 0 ? (
-              filteredRooms.map((room) => (
+            {rooms.length > 0 ? (
+              rooms.map((room) => (
                 <RoomCard key={room.id} room={room} />
               ))
             ) : (
               <div className="empty-state">
                 <h3>No rooms found</h3>
-                <p>We couldn't find any rooms available right now. Please try again later.</p>
+                <p>We couldn't find any rooms matching your search. Try a different query.</p>
               </div>
             )}
           </div>

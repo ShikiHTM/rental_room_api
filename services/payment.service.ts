@@ -7,8 +7,12 @@ export class PaymentService {
         this.strategy = strategy;
     };
 
+    public setStrategy(strategy: IPaymentStrategy) {
+        this.strategy = strategy;
+    };
+
     public pay(amount: number) {
-        if(!this.strategy) {
+        if (!this.strategy) {
             throw new Error('Payment strategy not set.');
         }
 

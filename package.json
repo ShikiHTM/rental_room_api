@@ -6,7 +6,9 @@
     "scripts": {
         "dev": "cross-env NODE_ENV=development nodemon --ext ts,js,json --exec tsx index.ts",
         "start": "cross-env NODE_ENV=production node index.ts",
-        "generate": "npx prisma generate"
+        "generate": "npx prisma generate",
+        "seed:users": "tsx Database/Utils/seedUsers.ts",
+        "seed:rooms": "tsx Database/Utils/seedRooms.ts"
     },
     "keywords": [],
     "type": "module",

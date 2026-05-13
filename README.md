@@ -11,7 +11,7 @@
 
 ## Project Overview
 
-**Rental Room API** is a robust backend service designed for a room rental and management platform (Final Term Project). The system facilitates seamless interactions between three primary stakeholders:
+**Quolifa API** is a robust backend service designed for a room rental and management platform (Final Term Project). The system facilitates seamless interactions between three primary stakeholders:
 
 * **User (Renter):** Search for rooms, view details, and manage bookings.
 * **Host (Provider):** Post room listings, manage availability, and handle tenant requests.

@@ -46,6 +46,7 @@
     },
     "exclude": [
         "Frontend",
+        "Admin",
         "node_modules"
     ]
 }

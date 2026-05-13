@@ -1,0 +1,55 @@
+%%{init: {"theme": "redux"}}%%
+stateDiagram-v2
+    state "Room Status" as Room {
+        [*] --> R_PENDING : Room created
+        R_PENDING : PENDING
+        R_APPROVED : APPROVED
+        R_REJECTED : REJECTED
+
+        R_PENDING  --> R_APPROVED : Admin approves
+        R_PENDING  --> R_REJECTED : Admin rejects
+        R_REJECTED --> R_PENDING  : Host resubmits
+        R_APPROVED --> [*]
+    }
+
+    state "Booking Status" as Booking {
+        [*] --> B_PENDING : Booking created
+        B_PENDING   : PENDING
+        B_CONFIRMED : CONFIRMED
+        B_COMPLETED : COMPLETED
+        B_CANCELLED : CANCELLED
+
+        B_PENDING   --> B_CONFIRMED : Payment confirmed
+        B_PENDING   --> B_CANCELLED : User or Host cancels
+        B_CONFIRMED --> B_COMPLETED : Check-out date passed
+        B_CONFIRMED --> B_CANCELLED : User or Host cancels
+        B_COMPLETED --> [*]
+        B_CANCELLED --> [*]
+    }
+
+    state "Payment Status" as Payment {
+        [*] --> P_PENDING : Payment created
+        P_PENDING   : PENDING
+        P_COMPLETED : COMPLETED
+        P_FAILED    : FAILED
+        P_CANCELLED : CANCELLED
+
+        P_PENDING   --> P_COMPLETED : Payment successful
+        P_PENDING   --> P_FAILED    : Processing error
+        P_PENDING   --> P_CANCELLED : Booking cancelled
+        P_FAILED    --> P_PENDING   : User retries
+        P_COMPLETED --> [*]
+        P_CANCELLED --> [*]
+        P_FAILED    --> [*]
+    }
+
+    state "User Account" as UserAccount {
+        [*] --> U_UNVERIFIED : User registered
+        U_UNVERIFIED : UNVERIFIED
+        U_ACTIVE     : ACTIVE
+        U_BANNED     : BANNED
+
+        U_UNVERIFIED --> U_ACTIVE : Email verified
+        U_ACTIVE     --> U_BANNED : Admin bans
+        U_BANNED     --> U_ACTIVE : Ban expired or Admin unbans
+    }

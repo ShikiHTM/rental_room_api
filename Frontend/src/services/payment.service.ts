@@ -1,26 +1,22 @@
 import api from './api';
 
+export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'ONLINE';
+
 export interface PaymentData {
   bookingId: string;
-  method: 'CASH' | 'BANK_TRANSFER' | 'ONLINE';
+  method: PaymentMethod;
   amount: number;
 }
 
+export const PAYMENT_METHODS: { value: PaymentMethod; label: string; planned: boolean }[] = [
+  { value: 'CASH', label: 'Cash on Arrival', planned: false },
+  { value: 'BANK_TRANSFER', label: 'Bank Transfer', planned: true },
+  { value: 'ONLINE', label: 'Credit Card / Online', planned: true },
+];
+
 export const paymentService = {
-  processPayment: async (paymentData: PaymentData): Promise<any> => {
-    // In the future: POST /payments
-    try {
-      const response = await api.post('/payments', paymentData);
-      return response.data;
-    } catch (error) {
-      console.warn("Mocking processPayment");
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      return { 
-        success: true, 
-        message: 'Payment processed successfully',
-        transactionId: 'TXN-' + Date.now()
-      };
-    }
-  }
+  processPayment: async (paymentData: PaymentData) => {
+    const response = await api.post('/payments', paymentData);
+    return response.data;
+  },
 };

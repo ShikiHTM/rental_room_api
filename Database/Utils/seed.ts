@@ -1,7 +1,8 @@
+import { randomUUID } from "node:crypto";
 import db from "./db.js";
 
 async function main() {
-  const hostId = ""; // <-- THAY ID CỦA BẠN VÀO ĐÂY
+  const hostId = "5cdff9da-d9fa-4007-a6d7-a43cee9f15ec"; // <-- THAY ID CỦA BẠN VÀO ĐÂY
 
   const rooms = [
     {
@@ -107,11 +108,18 @@ async function main() {
   ];
 
   for (const room of rooms) {
+    const { images, ...roomData } = room;
     await db.room.create({
       data: {
-        ...room as any,
-        hostId: hostId
-      }
+        ...roomData as any,
+        hostId: hostId,
+        images: {
+          create: images.map((imageUrl) => ({
+            imageUrl,
+            publicId: randomUUID(),
+          })),
+        },
+      },
     });
   }
   console.log('10 room entried!');

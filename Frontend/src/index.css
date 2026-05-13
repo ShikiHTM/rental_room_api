@@ -11,7 +11,10 @@
   
   --danger: #EF4444;
   --danger-hover: #DC2626;
-  
+
+  --success: #10B981;
+  --success-hover: #059669;
+
   --background: #F9FAFB; /* Gray 50 */
   --surface: #FFFFFF;
   --surface-hover: #F3F4F6;

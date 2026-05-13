@@ -1,0 +1,17 @@
+%%{init: {"theme": "redux"}}%%
+stateDiagram-v2
+    state "Payment Status" as Payment {
+        [*] --> P_PENDING : Payment created
+        P_PENDING   : PENDING
+        P_COMPLETED : COMPLETED
+        P_FAILED    : FAILED
+        P_CANCELLED : CANCELLED
+
+        P_PENDING   --> P_COMPLETED : Payment successful
+        P_PENDING   --> P_FAILED    : Processing error
+        P_PENDING   --> P_CANCELLED : Booking cancelled
+        P_FAILED    --> P_PENDING   : User retries
+        P_COMPLETED --> [*]
+        P_CANCELLED --> [*]
+        P_FAILED    --> [*]
+    }

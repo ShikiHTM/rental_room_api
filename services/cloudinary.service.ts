@@ -18,18 +18,39 @@ class Cloudinary {
         });
     }
 
+    private async getImageBuffer(input: string) {
+        if (input.startsWith("http")) {
+            const response = await fetch(input, {
+                method: 'GET',
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch image: ${response.statusText}`);
+            }
+
+            const arrayBuffer = await response.arrayBuffer();
+            return Buffer.from(arrayBuffer);
+        }
+
+        return input;
+    }
+
     /**
      * Upload an image to cloudinary
      * @param fileBase64 - The image data in base64 format
      * @returns {Promise<UploadResponse>}
      */
-    public async upload(fileBase64: string): Promise<UploadResponse> {
-        const buffer = await new ImageProcessor(fileBase64)
-            .optimize(75)
-            .resize(1200)
-            .toBuffer();
+    public async upload(input: string): Promise<UploadResponse> {
 
         try {
+            const resolvedInput = await this.getImageBuffer(input);
+
+            console.log(resolvedInput)
+
+            const buffer = await new ImageProcessor(resolvedInput as any)
+                .optimize(75)
+                .resize(1200)
+                .toBuffer();
 
             return new Promise((resolve, reject) => {
                 const hash = crypto.createHash('sha256').update(buffer).digest('hex');

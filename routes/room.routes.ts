@@ -20,4 +20,7 @@ router.post('/create', verifyToken, checkBanned, roomCrtl.createRoom);
 router.put('/:id', verifyToken, checkBanned, roomCrtl.updateRoom);
 router.delete('/:id', verifyToken, checkBanned, roomCrtl.deleteRoom);
 
+router.post('/:id/images', verifyToken, checkBanned, roomCrtl.addRoomImages);
+router.delete('/:id/images/:imageId', verifyToken, checkBanned, roomCrtl.removeRoomImage);
+
 export default router;

@@ -1,0 +1,16 @@
+%%{init: {"theme": "redux"}}%%
+stateDiagram-v2
+    state "Booking Status" as Booking {
+        [*] --> B_PENDING : Booking created
+        B_PENDING   : PENDING
+        B_CONFIRMED : CONFIRMED
+        B_COMPLETED : COMPLETED
+        B_CANCELLED : CANCELLED
+
+        B_PENDING   --> B_CONFIRMED : Payment confirmed
+        B_PENDING   --> B_CANCELLED : User or Host cancels
+        B_CONFIRMED --> B_COMPLETED : Check-out date passed
+        B_CONFIRMED --> B_CANCELLED : User or Host cancels
+        B_COMPLETED --> [*]
+        B_CANCELLED --> [*]
+    }

@@ -86,6 +86,26 @@ export const getMyBookings = catchAsync(async (req: AuthRequest, res: Response) 
     return res.status(200).json({ data: bookings });
 })
 
+// GET /bookings/host
+export const getHostReservations = catchAsync(async (req: AuthRequest, res: Response) => {
+    const { id: userId, role } = req.user;
+
+    if (role !== 'HOST' && role !== 'ADMIN') {
+        throw new ForbiddenError("You're not allowed to do this action");
+    }
+
+    const bookings = await db.booking.findMany({
+        where: role === 'ADMIN' ? {} : { room: { hostId: userId } },
+        include: {
+            room: { select: { id: true, title: true, city: true, address: true, hostId: true } },
+            user: { select: { id: true, fullName: true, email: true, role: true } },
+        },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    return res.status(200).json({ data: bookings });
+})
+
 // PATCH /bookings/:id/status
 export const updateBookingStatus = catchAsync(async (req: AuthRequest, res: Response) => {
     const { id } = req.params as { id: string };

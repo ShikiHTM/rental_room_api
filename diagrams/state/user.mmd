@@ -1,0 +1,12 @@
+%%{init: {"theme": "redux"}}%%
+stateDiagram-v2
+    state "User Account" as UserAccount {
+        [*] --> U_UNVERIFIED : User registered
+        U_UNVERIFIED : UNVERIFIED
+        U_ACTIVE     : ACTIVE
+        U_BANNED     : BANNED
+
+        U_UNVERIFIED --> U_ACTIVE : Email verified
+        U_ACTIVE     --> U_BANNED : Admin bans
+        U_BANNED     --> U_ACTIVE : Ban expired or Admin unbans
+    }

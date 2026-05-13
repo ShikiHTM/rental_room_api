@@ -21,35 +21,8 @@ export const bookingService = {
   },
 
   getHostReservations: async (): Promise<Booking[]> => {
-    // MOCK DATA for Host Reservations because Backend doesn't support it yet
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([
-          {
-            id: 'mock-booking-1',
-            checkInDate: new Date().toISOString(),
-            checkOutDate: new Date(Date.now() + 86400000 * 3).toISOString(),
-            totalPrice: 4500000,
-            status: 'PENDING',
-            roomId: 'mock-room',
-            userId: 'mock-user',
-            room: { id: 'mock-room', title: 'Luxury Ocean View Studio', pricePerNight: 1500000, city: 'Da Nang', address: '123 Vo Nguyen Giap', description: '', maxGuests: 2, status: 'APPROVED', hostId: 'me' },
-            user: { id: 'mock-user', fullName: 'John Doe', email: 'john@example.com', role: 'USER' }
-          },
-          {
-            id: 'mock-booking-2',
-            checkInDate: new Date(Date.now() + 86400000 * 5).toISOString(),
-            checkOutDate: new Date(Date.now() + 86400000 * 7).toISOString(),
-            totalPrice: 1700000,
-            status: 'CONFIRMED',
-            roomId: 'mock-room-2',
-            userId: 'mock-user-2',
-            room: { id: 'mock-room-2', title: 'Cozy Garden House', pricePerNight: 850000, city: 'Hanoi', address: '45 Ngo Tam Thuong', description: '', maxGuests: 3, status: 'APPROVED', hostId: 'me' },
-            user: { id: 'mock-user-2', fullName: 'Alice Smith', email: 'alice@example.com', role: 'USER' }
-          }
-        ]);
-      }, 500);
-    });
+    const response = await api.get<{ data: Booking[] }>('/bookings/host');
+    return response.data.data;
   },
 
   getMyBookings: async (): Promise<Booking[]> => {

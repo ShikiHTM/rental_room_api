@@ -22,6 +22,7 @@ app.use(cors({
     origin: serverConfig.frontendUrl,
     credentials: true
 }));
+
 app.use(express.json());
 app.use(cookieParser(authConfig.JWTSecret));
 

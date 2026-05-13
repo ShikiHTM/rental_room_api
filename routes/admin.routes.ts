@@ -9,8 +9,12 @@ const router: Router = Router();
 
 router.use(verifyToken, isAdmin);
 
+// Stats
+router.get('/stats', adminCtrl.getStats);
+
 // Rooms
 router.get('/rooms', roomCtrl.getRooms);
+router.get('/rooms/search', roomCtrl.searchRooms);
 router.get('/rooms/:id', roomCtrl.getRoom);
 router.patch('/rooms/:roomId/approve', adminCtrl.approveRoom);
 router.patch('/rooms/:roomId/reject', adminCtrl.rejectRoom);
@@ -18,6 +22,7 @@ router.delete('/rooms/:id', roomCtrl.deleteRoom);
 
 // Users
 router.get('/users', adminCtrl.getUsers);
+router.patch('/users/:id', adminCtrl.updateUser);
 router.patch('/users/:id/ban', adminCtrl.banUser);
 router.patch('/users/:id/unban', adminCtrl.unbanUser);
 
@@ -25,5 +30,8 @@ router.patch('/users/:id/unban', adminCtrl.unbanUser);
 router.get('/bookings', adminCtrl.getAllBookings);
 router.get('/bookings/search', adminCtrl.searchBookings);
 router.patch('/bookings/:id/status', bookingCtrl.updateBookingStatus);
+
+// Payments
+router.get('/payments', adminCtrl.listPayments);
 
 export default router;

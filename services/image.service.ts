@@ -3,9 +3,19 @@ import sharp, { type Sharp } from 'sharp';
 export default class ImageProcessor {
     private pipeline: Sharp;
 
-    constructor(fileBase64: string) {
-        const base64Data = fileBase64.split(',')[1] || fileBase64;
-        this.pipeline = sharp(Buffer.from(base64Data, 'base64'));
+    constructor(input: string | Buffer) {
+        if (Buffer.isBuffer(input)) {
+            this.pipeline = sharp(input);
+        }
+
+        else if (typeof input === 'string') {
+            const base64Data = input.split(',')[1] || input;
+            this.pipeline = sharp(Buffer.from(base64Data, 'base64'));
+        }
+
+        else {
+            throw new Error("Invalid input type provided to ImageProcessor. Expected: string | Buffer")
+        }
     }
 
     public resize(width: number, height: number = width) {

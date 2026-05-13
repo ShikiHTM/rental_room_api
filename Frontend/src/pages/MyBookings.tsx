@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { bookingService, type Booking } from '../services/booking.service';
 import { reviewService } from '../services/review.service';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
+import { formatCurrency } from '../utils/format';
 import './MyBookings.css';
 
 const MyBookings = () => {
@@ -16,15 +16,7 @@ const MyBookings = () => {
   const [reviewBooking, setReviewBooking] = useState<Booking | null>(null);
   const [reviewData, setReviewData] = useState({ rating: 5, comment: '', images: [''] });
 
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
-
   useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-
     const fetchBookings = async () => {
       try {
         const data = await bookingService.getMyBookings();
@@ -37,7 +29,7 @@ const MyBookings = () => {
     };
 
     fetchBookings();
-  }, [isAuthenticated, navigate]);
+  }, []);
 
   const handleCancel = async () => {
     if (!bookingToCancel) return;
@@ -103,7 +95,7 @@ const MyBookings = () => {
                   <p><strong>Check-out:</strong> {new Date(booking.checkOutDate).toLocaleDateString()}</p>
                 </div>
                 <div className="booking-price">
-                  <strong>Total:</strong> ${booking.totalPrice}
+                  <strong>Total:</strong> {formatCurrency(booking.totalPrice)}
                 </div>
               </div>
 

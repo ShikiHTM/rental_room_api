@@ -1,0 +1,102 @@
+%%{init: {"theme": "redux"}}%%
+erDiagram
+    USER {
+        string   id           PK
+        string   email        UK
+        string   password
+        string   fullName
+        string   phoneNumber
+        ROLE     role
+        datetime verifiedAt
+        string   verifyToken  UK
+        datetime bannedAt
+        datetime banExpiresAt
+        string   banReason
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    ROOM {
+        string             id            PK
+        string             title
+        string             description
+        string             address
+        string             city
+        decimal            pricePerNight
+        int                maxGuests
+        FaultFindingStatus status
+        string             hostId        FK
+        datetime           createdAt
+        datetime           updatedAt
+    }
+
+    ROOM_IMAGE {
+        string   id        PK
+        string   imageUrl
+        string   publicId  UK
+        string   roomId    FK
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    BOOKING {
+        string        id           PK
+        datetime      checkInDate
+        datetime      checkOutDate
+        decimal       totalPrice
+        BookingStatus status
+        string        userId       FK
+        string        roomId       FK
+        datetime      createdAt
+        datetime      updatedAt
+    }
+
+    PAYMENT {
+        string        id            PK
+        PaymentMethod method
+        PaymentStatus status
+        decimal       amount
+        string        transactionId
+        string        bookingId     FK
+        datetime      createdAt
+        datetime      updatedAt
+    }
+
+    REVIEW {
+        string   id        PK
+        int      rating
+        string   comment
+        string   userId    FK
+        string   roomId    FK
+        string   bookingId FK
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    REVIEW_IMAGE {
+        string   id        PK
+        string   imageUrl
+        string   publicId  UK
+        string   reviewId  FK
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    PASSWORD_RESET_TOKEN {
+        string   id        PK
+        string   userId    FK
+        string   token     UK
+        datetime createdAt
+        datetime expiredAt
+    }
+
+    USER         ||--o{ ROOM                 : "hosts"
+    USER         ||--o{ BOOKING              : "makes"
+    USER         ||--o{ REVIEW               : "writes"
+    USER         ||--o{ PASSWORD_RESET_TOKEN : "has"
+    ROOM         ||--o{ ROOM_IMAGE           : "has"
+    ROOM         ||--o{ BOOKING              : "receives"
+    ROOM         ||--o{ REVIEW               : "receives"
+    BOOKING      ||--o{ PAYMENT              : "paid via"
+    BOOKING      ||--o| REVIEW               : "has"
+    REVIEW       ||--o{ REVIEW_IMAGE         : "has"

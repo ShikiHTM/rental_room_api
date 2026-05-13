@@ -87,6 +87,25 @@ export const updateRoom = catchAsync(async (req: AuthRequest, res: Response) => 
     })
 })
 
+// POST /rooms/:id/images (Owner/Admin only)
+export const addRoomImages = catchAsync(async (req: AuthRequest, res: Response) => {
+    const { id } = req.params as { id: string };
+    const { images } = req.body as { images?: string[] };
+
+    if (!Array.isArray(images)) throw new BadRequestError('images must be an array of base64 strings');
+
+    const created = await roomService.addRoomImages(id, req.user, images);
+    return res.status(201).json({ message: 'Images added', data: created });
+});
+
+// DELETE /rooms/:id/images/:imageId (Owner/Admin only)
+export const removeRoomImage = catchAsync(async (req: AuthRequest, res: Response) => {
+    const { id, imageId } = req.params as { id: string; imageId: string };
+
+    await roomService.removeRoomImage(id, imageId, req.user);
+    return res.status(200).json({ message: 'Image removed' });
+});
+
 // DELETE /room/[:id] (Admin and Room Owner)
 export const deleteRoom = catchAsync(async (req: AuthRequest, res: Response) => {
     const roomId = req.params.id as string;
@@ -98,19 +117,35 @@ export const deleteRoom = catchAsync(async (req: AuthRequest, res: Response) => 
     })
 });
 
-// GET /rooms/search?q=&city=&minPrice=&maxPrice=&maxGuests=
+// GET /rooms/search?q=&city=&minPrice=&maxPrice=&maxGuests=&status=
 export const searchRooms = catchAsync(async (req: Request, res: Response) => {
-    const { q = '', city, minPrice, maxPrice, maxGuests } = req.query;
+    const { q = '', city, minPrice, maxPrice, maxGuests, status } = req.query;
 
     const isAdmin = req.user?.role === 'ADMIN';
+    const effectiveStatus = isAdmin ? (status as string | undefined) : 'APPROVED';
 
     const result = await meiliService.searchRooms(q as string, {
         ...(city && { city: city as string }),
         ...(minPrice && { minPrice: Number(minPrice) }),
         ...(maxPrice && { maxPrice: Number(maxPrice) }),
         ...(maxGuests && { maxGuests: Number(maxGuests) }),
-        ...(!isAdmin && { status: 'APPROVED' }),
+        ...(effectiveStatus && { status: effectiveStatus }),
     });
 
-    return res.status(200).json({ data: result.hits });
+    const ids = (result.hits as { id: string }[]).map(h => h.id);
+    if (ids.length === 0) return res.status(200).json({ data: [] });
+
+    const rooms = await db.room.findMany({
+        where: { id: { in: ids } },
+        include: {
+            images: true,
+            host: { select: { fullName: true, email: true } },
+            reviews: true,
+        },
+    });
+
+    const byId = new Map(rooms.map(r => [r.id, r]));
+    const ordered = ids.map(id => byId.get(id)).filter(Boolean);
+
+    return res.status(200).json({ data: ordered });
 });
