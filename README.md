@@ -58,7 +58,7 @@ Follow these steps to set up the project locally:
 Ensure you have the following installed:
 - Node.js (v18+)
 - **pnpm** (`npm install -g pnpm`)
-- Docker (optional, for database)
+- Docker & Docker Compose (required for the full stack: Postgres, RabbitMQ, Meilisearch, nginx, Cloudflare Tunnel)
 
 ### 2. Installation
 ```bash
@@ -72,29 +72,48 @@ pnpm install
 
 ### 3. Environment Setup
 
+> **Note:** `.env` is gitignored, so every developer must create their own. The Docker Compose stack reads from `.env` directly — without it, services will fail to start.
+
 Copy the example environment file and fill in your credentials:
 
 ```bash
 cp .env.example .env
 ```
 
-Make sure to configure:
+Variables you'll need to set:
 
--   `DATABASE_CONNECTION`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME` for Database
--   `JWT_SECRET` or you can just let it blank, for JWT Token
--   `CLOUDINARY_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_SECRET_KEY` for cloudinary cloud image service
+-   **Database (app-side):** `DATABASE`, `DATABASE_HOST`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_PORT`, `DATABASE_NAME`
+-   **Database (Postgres container):** `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` — should match the app-side credentials
+-   **Auth:** `JWT_SECRET` (leave blank to use the fallback, not recommended for production)
+-   **Cloudinary:** `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_SECRET_KEY`
+-   **RabbitMQ:** `RABBITMQ_USER` / `RABBITMQ_PASSWORD` (container admin) and `RABBITMQ_NAME` / `RABBITMQ_PASS` / `RABBITMQ_PORT` (app connection — typically the same user/pass)
+-   **Meilisearch:** `MEILISEARCH_API_KEY` (the master key)
+-   **Cloudflare Tunnel:** `CLOUDFLARE_TUNNEL_TOKEN` (only if you're running the `cloudflared` service)
+-   **Mail:** `MAIL_*` block for outgoing email
+-   `FRONTEND_URL` — comma-separated list of allowed CORS origins
 
-### 4. Database Migration
+### 4. Running with Docker (recommended)
 
-Run Prisma migrations to set up your database schema:
+The full stack (backend, Postgres, RabbitMQ, Meilisearch, nginx, frontend, admin, Cloudflare Tunnel) is orchestrated via `docker-compose.yml`:
 
 ```bash
-npx prisma migrate dev --name init
+docker compose up -d --build
 ```
 
-### 5. Running the application
+The backend container runs Prisma migrations on startup. To run them manually:
 
 ```bash
+docker compose exec backend npx prisma migrate deploy
+```
+
+### 5. Running locally without Docker
+
+If you'd rather run the Node process directly (you'll still need Postgres, RabbitMQ, and Meilisearch available — point your `.env` at them):
+
+```bash
+# Apply migrations
+npx prisma migrate dev --name init
+
 # Development mode
 pnpm dev
 
